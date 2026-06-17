@@ -568,16 +568,11 @@ async function doSearch() {
   document.getElementById('listHeader').classList.remove('visible');
 
   try {
-    const params = new URLSearchParams({ query: keyword, display: 100, start: 1, sort: sortVal });
-    const res = await fetch(`https://openapi.naver.com/v1/search/news.json?${params}`, {
-      headers: {
-        'X-Naver-Client-Id': clientId,
-        'X-Naver-Client-Secret': clientSecret
-      }
-    });
+    const params = new URLSearchParams({ query: keyword, display: 100, start: 1, sort: sortVal, clientId, clientSecret });
+    const res = await fetch(`/.netlify/functions/news?${params}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.errorMessage || `오류 ${res.status}`);
+      throw new Error(err.error || err.errorMessage || `오류 ${res.status}`);
     }
     const data = await res.json();
     const { start, end } = getDateRange();
