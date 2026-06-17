@@ -112,10 +112,13 @@ input[type="date"] { font-size: 12px; }
 .article-arrow { color: var(--text-muted); font-size: 16px; margin-top: 2px; flex-shrink: 0; }
 
 /* COPY BAR */
-.copy-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px; z-index: 100; }
-.btn-copy { width: 100%; padding: 12px; background: #1a1a1a; color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+.copy-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px; z-index: 100; display: flex; gap: 8px; }
+.btn-copy { flex: 1; padding: 12px; background: #1a1a1a; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
 .btn-copy:hover { background: #333; }
 .btn-copy:disabled { background: #ccc; cursor: not-allowed; }
+.btn-share { padding: 12px 16px; background: #FEE500; color: #3A1D1D; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s; white-space: nowrap; flex-shrink: 0; }
+.btn-share:hover { background: #f0d800; }
+.btn-share:disabled { background: #ccc; color: white; cursor: not-allowed; }
 
 /* MODAL */
 .modal-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.4); }
@@ -289,7 +292,8 @@ input[type="date"] { font-size: 12px; }
 
 <!-- COPY BAR -->
 <div class="copy-bar">
-  <button class="btn-copy" id="copyBtn" onclick="copyUrls()" disabled>선택한 기사 URL 복사 (0개)</button>
+  <button class="btn-copy" id="copyBtn" onclick="copyUrls()" disabled>URL 복사 (0개)</button>
+  <button class="btn-share" id="shareBtn" onclick="shareUrls()" disabled>공유 📤</button>
 </div>
 
 <!-- MODAL -->
@@ -518,7 +522,34 @@ function updateCountUI() {
   document.getElementById('selectedCount').textContent = `${n}개 선택`;
   const btn = document.getElementById('copyBtn');
   btn.disabled = n === 0;
-  btn.textContent = `선택한 기사 URL 복사 (${n}개)`;
+  btn.textContent = `URL 복사 (${n}개)`;
+  const shareBtn = document.getElementById('shareBtn');
+  shareBtn.disabled = n === 0;
+  shareBtn.textContent = `공유 📤 (${n}개)`;
+}
+
+async function shareUrls() {
+  if (!selectedIds.size) return;
+  const selected = [...selectedIds].map(id => articles[id]);
+
+  if (!navigator.share) {
+    showToast('이 브라우저는 공유 기능을 지원하지 않아요.');
+    return;
+  }
+
+  for (const a of selected) {
+    try {
+      await navigator.share({
+        title: a.title,
+        url: a.link
+      });
+      // 잠깐 대기 후 다음 공유
+      await new Promise(r => setTimeout(r, 500));
+    } catch(e) {
+      // 사용자가 취소하면 중단
+      break;
+    }
+  }
 }
 function toggleSelectAll() {
   if (selectedIds.size === articles.length) selectedIds.clear();
@@ -586,6 +617,9 @@ function showError(msg) {
 function showBlocked() {
   document.getElementById('modalBlocked').classList.add('show');
   document.getElementById('articleFrame').style.display = 'none';
+  // 차단되면 자동으로 새 탭으로 열기
+  window.open(currentArticleUrl, '_blank');
+  closeModal();
 }
 function openCurrent() { window.open(currentArticleUrl, '_blank'); }
 function closeModal() {
