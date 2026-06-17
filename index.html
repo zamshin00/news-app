@@ -559,13 +559,20 @@ window.addEventListener('popstate', function() {
 function copyUrls() {
   if (!selectedIds.size) return;
   const urls = [...selectedIds].map(id => `📰 ${articles[id].title}\n${articles[id].link}`).join('\n\n\n') + '\n.';
+  
+  const doCopy = () => {
+    if (navigator.share) {
+      navigator.share({ text: urls }).catch(() => {});
+    }
+  };
+
   navigator.clipboard.writeText(urls)
-    .then(() => showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`))
+    .then(() => { showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`); doCopy(); })
     .catch(() => {
       const ta = document.createElement('textarea');
       ta.value = urls; document.body.appendChild(ta); ta.select();
       document.execCommand('copy'); document.body.removeChild(ta);
-      showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`);
+      showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`); doCopy();
     });
 }
 </script>
