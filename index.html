@@ -640,7 +640,7 @@ window.addEventListener('popstate', function(e) {
 // ── COPY ──
 function copyUrls() {
   if (!selectedIds.size) return;
-  const urls = [...selectedIds].map(id => articles[id].link).join('\n\n');
+  const urls = [...selectedIds].map(id => `📰 ${articles[id].title}\n${articles[id].link}`).join('\n\n');
   navigator.clipboard.writeText(urls)
     .then(() => showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`))
     .catch(() => {
