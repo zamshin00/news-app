@@ -525,25 +525,7 @@ function openModal(id) {
   document.querySelectorAll('.article-item').forEach(el => el.classList.remove('active'));
   document.getElementById(`item-${id}`)?.classList.add('active');
   const a = articles[id];
-  currentArticleUrl = a.link;
-  document.getElementById('modalTitle').textContent = a.title;
-  document.getElementById('modalDate').textContent = a.date;
-  document.getElementById('modalOpenBtn').onclick = () => window.open(a.link, '_blank');
-  document.getElementById('blockedUrl').textContent = a.link;
-  document.getElementById('articleFrame').src = a.link;
-  document.getElementById('articleFrame').style.display = 'block';
-  document.getElementById('modalBlocked').classList.remove('show');
-  document.getElementById('modal').classList.add('open');
-  document.getElementById('modalOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-  history.pushState({ modal: true }, '');
-  setTimeout(() => {
-    try {
-      const frame = document.getElementById('articleFrame');
-      const doc = frame.contentDocument || frame.contentWindow?.document;
-      if (!doc || !doc.body || doc.body.innerHTML.trim() === '') showBlocked();
-    } catch { showBlocked(); }
-  }, 2000);
+  window.open(a.link, '_blank');
 }
 window.addEventListener('popstate', function() {
   const modal = document.getElementById('modal');
