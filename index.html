@@ -546,16 +546,19 @@ function getDateRange() {
     const s = document.getElementById('startDate').value;
     const e = document.getElementById('endDate').value;
     localStorage.setItem('naver_start', s); localStorage.setItem('naver_end', e);
-    return { start: s || null, end: e || null };
+    return { start: s ? new Date(s).getTime() : null, end: e ? new Date(e+'T23:59:59').getTime() : null };
   }
   const map = { '1h': 1/24, '1d': 1, '1w': 7, '1m': 30, '3m': 90 };
   const now = new Date();
-  return { start: new Date(now - (map[periodVal]||1)*86400000).toISOString().split('T')[0], end: now.toISOString().split('T')[0] };
+  return {
+    start: now.getTime() - (map[periodVal]||1) * 86400000,
+    end: now.getTime()
+  };
 }
 function isInRange(pubDate, start, end) {
-  const d = new Date(pubDate);
-  if (start && d < new Date(start)) return false;
-  if (end && d > new Date(end+'T23:59:59')) return false;
+  const d = new Date(pubDate).getTime();
+  if (start && d < start) return false;
+  if (end && d > end) return false;
   return true;
 }
 
@@ -580,6 +583,21 @@ function showError(msg) {
 }
 
 // ── MODAL ──
+function showBlocked() {
+  document.getElementById('modalBlocked').classList.add('show');
+  document.getElementById('articleFrame').style.display = 'none';
+}
+function openCurrent() { window.open(currentArticleUrl, '_blank'); }
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  document.getElementById('articleFrame').src = '';
+  renderList();
+  // 백키 히스토리 처리
+  if (history.state && history.state.modal) history.back();
+}
+
 function openModal(id) {
   activeId = id;
   document.querySelectorAll('.article-item').forEach(el => el.classList.remove('active'));
@@ -596,6 +614,8 @@ function openModal(id) {
   document.getElementById('modal').classList.add('open');
   document.getElementById('modalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+  // 백키 히스토리 추가
+  history.pushState({ modal: true }, '');
   setTimeout(() => {
     try {
       const frame = document.getElementById('articleFrame');
@@ -604,24 +624,23 @@ function openModal(id) {
     } catch { showBlocked(); }
   }, 2000);
 }
-function showBlocked() {
-  document.getElementById('modalBlocked').classList.add('show');
-  document.getElementById('articleFrame').style.display = 'none';
-}
-function openCurrent() { window.open(currentArticleUrl, '_blank'); }
-function closeModal() {
-  document.getElementById('modal').classList.remove('open');
-  document.getElementById('modalOverlay').classList.remove('open');
-  document.body.style.overflow = '';
-  document.getElementById('articleFrame').src = '';
-  // 체크 상태 유지하며 리스트 다시 렌더
-  renderList();
-}
+
+// 백키 누르면 모달 닫기
+window.addEventListener('popstate', function(e) {
+  const modal = document.getElementById('modal');
+  if (modal.classList.contains('open')) {
+    modal.classList.remove('open');
+    document.getElementById('modalOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+    document.getElementById('articleFrame').src = '';
+    renderList();
+  }
+});
 
 // ── COPY ──
 function copyUrls() {
   if (!selectedIds.size) return;
-  const urls = [...selectedIds].map(id => articles[id].link).join('\n');
+  const urls = [...selectedIds].map(id => articles[id].link).join('\n\n');
   navigator.clipboard.writeText(urls)
     .then(() => showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`))
     .catch(() => {
