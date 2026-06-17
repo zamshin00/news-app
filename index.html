@@ -177,7 +177,10 @@ input[type="date"] { font-size: 12px; }
         <span>Secret</span>
         <input type="text" id="clientSecret" placeholder="Client Secret 입력" autocomplete="off">
       </div>
-      <button class="api-save-btn" onclick="saveApiKeys()">저장</button>
+      <div style="display:flex;gap:6px;">
+        <button class="api-save-btn" onclick="saveApiKeys()" style="flex:1;">저장</button>
+        <button class="api-save-btn" onclick="cancelApiFields()" style="flex:1;background:#999;">취소</button>
+      </div>
     </div>
   </div>
 
@@ -357,6 +360,12 @@ let periodVal = '1d';
 // ── API ──
 function toggleApiFields() {
   document.getElementById('apiFields').classList.toggle('open');
+}
+function cancelApiFields() {
+  document.getElementById('apiFields').classList.remove('open');
+  // 입력란 초기화 (기존 저장값 유지)
+  document.getElementById('clientId').value = '';
+  document.getElementById('clientSecret').value = '';
 }
 function saveApiKeys() {
   const id = document.getElementById('clientId').value.trim();
