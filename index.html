@@ -20,19 +20,13 @@
 }
 html, body { height: 100%; }
 body { font-family: -apple-system, 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
-
-/* HEADER */
 .header { position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 48px; }
 .logo { font-size: 20px; font-weight: 900; color: var(--green); }
 .logo-sub { font-size: 13px; color: var(--text-muted); }
-
-/* SEARCH PANEL */
 .search-panel { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
-
-/* API */
 .api-row-compact { display: flex; align-items: center; gap: 8px; }
 .api-row-compact span { font-size: 12px; color: var(--text-sub); }
-.api-reauth-btn { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); background: white; font-size: 11px; color: var(--text-sub); cursor: pointer; transition: all 0.15s; }
+.api-reauth-btn { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); background: white; font-size: 11px; color: var(--text-sub); cursor: pointer; }
 .api-reauth-btn:hover { border-color: var(--green); color: var(--green); }
 .api-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
 .api-dot.active { background: var(--green); }
@@ -41,66 +35,40 @@ body { font-family: -apple-system, 'Noto Sans KR', sans-serif; background: var(-
 .api-field-row { display: flex; align-items: center; gap: 8px; }
 .api-field-row span { font-size: 11px; color: var(--text-sub); min-width: 50px; }
 .api-save-btn { padding: 7px; border-radius: var(--radius-sm); background: var(--green); color: white; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
-
-/* PRESETS */
 .preset-section { display: flex; flex-direction: column; gap: 4px; }
 .preset-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
 .preset-row { display: flex; align-items: center; gap: 5px; }
 .preset-input { flex: 1; min-width: 0; }
-.and-label { font-size: 11px; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
-.preset-search-btn { padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; color: var(--text-sub); cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
+.preset-search-btn { padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; color: var(--text-sub); cursor: pointer; white-space: nowrap; flex-shrink: 0; }
 .preset-search-btn:hover { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
-.or-divider { text-align: left; font-size: 11px; font-weight: 700; color: var(--text-muted); padding: 1px 0 1px 2px; letter-spacing: 1px; }
 .or-row { display: flex; align-items: center; padding: 2px 0; }
 .paren { font-size: 15px; font-weight: 700; color: var(--text-muted); flex-shrink: 0; }
-.op-select, .row-op-select {
-  padding: 5px 4px; border: 1px solid var(--border); border-radius: var(--radius-sm);
-  font-size: 11px; font-weight: 700; color: var(--green-dark);
-  background: var(--green-light); cursor: pointer; flex-shrink: 0;
-  -webkit-appearance: none; text-align: center;
-}
+.op-select, .row-op-select { padding: 5px 4px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; color: var(--green-dark); background: var(--green-light); cursor: pointer; flex-shrink: 0; -webkit-appearance: none; text-align: center; }
 .row-op-select { font-size: 12px; padding: 3px 8px; }
-.search-all-btn { width: 100%; padding: 10px; background: var(--green); color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+.search-all-btn { width: 100%; padding: 10px; background: var(--green); color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; }
 .search-all-btn:hover { background: var(--green-dark); }
-
-/* DIVIDER */
 .section-divider { height: 1px; background: var(--border); margin: 2px 0; }
-
-/* DIRECT SEARCH */
 .direct-search-row { display: flex; gap: 8px; }
 .direct-search-row input { flex: 1; }
-
-/* OPTIONS */
 .option-group { display: flex; flex-direction: column; gap: 4px; }
 .option-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
 .pill-group { display: flex; flex-wrap: wrap; gap: 4px; }
-.pill { padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--text-sub); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.pill { padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; }
 .pill:hover { border-color: var(--green); color: var(--green); }
 .pill.active { background: var(--green); border-color: var(--green); color: white; font-weight: 700; }
 .date-range { display: none; flex-direction: column; gap: 6px; background: #fafafa; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; margin-top: 2px; }
 .date-range.open { display: flex; }
 .date-range-row { display: flex; align-items: center; gap: 8px; }
 .date-range-row span { font-size: 12px; color: var(--text-muted); }
-
-/* INPUTS */
-input[type="text"], input[type="date"] {
-  width: 100%; padding: 8px 10px;
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  font-size: 13px; color: var(--text); background: var(--surface);
-  outline: none; transition: border 0.15s; -webkit-appearance: none;
-}
+input[type="text"], input[type="date"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; color: var(--text); background: var(--surface); outline: none; transition: border 0.15s; -webkit-appearance: none; }
 input:focus { border-color: var(--green); }
 input[type="date"] { font-size: 12px; }
-
-/* LIST HEADER */
 .list-header { display: none; align-items: center; justify-content: space-between; padding: 8px 16px; background: #fafafa; border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 90; }
 .list-header.visible { display: flex; }
 .list-meta { display: flex; align-items: center; gap: 8px; }
 .count-badge { background: var(--green); color: white; font-size: 11px; font-weight: 700; border-radius: 20px; padding: 2px 9px; }
 .selected-count { font-size: 12px; color: var(--text-muted); }
 .select-all-btn { font-size: 12px; color: var(--green-dark); font-weight: 700; background: none; border: none; cursor: pointer; padding: 4px; }
-
-/* ARTICLE LIST */
 .article-list { padding-bottom: 80px; }
 .article-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #f0f0f0; background: var(--surface); cursor: pointer; transition: background 0.1s; }
 .article-item:active { background: #f5f5f5; }
@@ -109,18 +77,13 @@ input[type="date"] { font-size: 12px; }
 .article-info { flex: 1; min-width: 0; }
 .article-title { font-size: 14px; font-weight: 500; line-height: 1.5; margin-bottom: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .article-date { font-size: 11px; color: var(--text-muted); }
+.article-share-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px 4px; flex-shrink: 0; opacity: 0.6; }
+.article-share-btn:hover { opacity: 1; }
 .article-arrow { color: var(--text-muted); font-size: 16px; margin-top: 2px; flex-shrink: 0; }
-
-/* COPY BAR */
-.copy-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px; z-index: 100; display: flex; gap: 8px; }
-.btn-copy { flex: 1; padding: 12px; background: #1a1a1a; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+.copy-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px; z-index: 100; }
+.btn-copy { width: 100%; padding: 12px; background: #1a1a1a; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; }
 .btn-copy:hover { background: #333; }
 .btn-copy:disabled { background: #ccc; cursor: not-allowed; }
-.btn-share { padding: 12px 16px; background: #FEE500; color: #3A1D1D; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s; white-space: nowrap; flex-shrink: 0; }
-.btn-share:hover { background: #f0d800; }
-.btn-share:disabled { background: #ccc; color: white; cursor: not-allowed; }
-
-/* MODAL */
 .modal-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.4); }
 .modal-overlay.open { display: block; }
 .modal { position: fixed; bottom: 0; left: 0; right: 0; height: 88vh; background: var(--surface); border-radius: 20px 20px 0 0; display: none; flex-direction: column; z-index: 201; }
@@ -131,7 +94,7 @@ input[type="date"] { font-size: 12px; }
 .modal-title { font-size: 15px; font-weight: 700; line-height: 1.4; margin-bottom: 6px; }
 .modal-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .modal-date { font-size: 12px; color: var(--text-muted); }
-.modal-open-btn { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px; background: none; font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+.modal-open-btn { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px; background: none; font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; }
 .modal-open-btn:hover { border-color: var(--green); color: var(--green); }
 .modal-body { flex: 1; overflow: hidden; position: relative; }
 .modal-body iframe { width: 100%; height: 100%; border: none; }
@@ -141,8 +104,6 @@ input[type="date"] { font-size: 12px; }
 .modal-blocked h3 { font-size: 15px; font-weight: 700; }
 .modal-blocked p { font-size: 13px; color: var(--text-sub); line-height: 1.6; }
 .blocked-url { background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px; font-size: 11px; color: var(--text-sub); word-break: break-all; width: 100%; cursor: pointer; }
-
-/* STATES */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 60px 32px; text-align: center; color: var(--text-muted); }
 .empty-state .icon { font-size: 48px; }
 .empty-state h3 { font-size: 15px; font-weight: 600; color: var(--text-sub); }
@@ -163,8 +124,6 @@ input[type="date"] { font-size: 12px; }
 </div>
 
 <div class="search-panel">
-
-  <!-- API 인증 -->
   <div>
     <div class="api-row-compact">
       <span class="api-dot" id="apiDot"></span>
@@ -187,11 +146,8 @@ input[type="date"] { font-size: 12px; }
     </div>
   </div>
 
-  <!-- 즐겨찾기 키워드 (AND/OR) -->
   <div class="preset-section">
     <div class="preset-label">⭐ 즐겨찾기 키워드</div>
-
-    <!-- 1행 -->
     <div class="preset-row">
       <span class="paren">(</span>
       <input type="text" class="preset-input" id="p0a" placeholder="키워드1" oninput="savePresets()">
@@ -203,8 +159,6 @@ input[type="date"] { font-size: 12px; }
     <div class="or-row">
       <select class="row-op-select" id="rowop0" onchange="savePresets()"><option value="OR">OR</option><option value="AND">AND</option></select>
     </div>
-
-    <!-- 2행 -->
     <div class="preset-row">
       <span class="paren">(</span>
       <input type="text" class="preset-input" id="p1a" placeholder="키워드3" oninput="savePresets()">
@@ -216,8 +170,6 @@ input[type="date"] { font-size: 12px; }
     <div class="or-row">
       <select class="row-op-select" id="rowop1" onchange="savePresets()"><option value="OR">OR</option><option value="AND">AND</option></select>
     </div>
-
-    <!-- 3행 -->
     <div class="preset-row">
       <span class="paren">(</span>
       <input type="text" class="preset-input" id="p2a" placeholder="키워드5" oninput="savePresets()">
@@ -226,20 +178,16 @@ input[type="date"] { font-size: 12px; }
       <span class="paren">)</span>
       <button class="preset-search-btn" onclick="searchPreset(2)">🔍</button>
     </div>
-
     <button class="search-all-btn" onclick="searchAll()">즐겨찾기 전체 검색</button>
   </div>
 
   <div class="section-divider"></div>
 
-  <!-- 직접 검색 -->
   <div class="direct-search-row">
-    <input type="text" id="keyword" placeholder="직접 검색..." autocomplete="off"
-      onkeydown="if(event.key==='Enter') doDirectSearch()">
+    <input type="text" id="keyword" placeholder="직접 검색..." autocomplete="off" onkeydown="if(event.key==='Enter') doDirectSearch()">
     <button style="padding:8px 14px;background:var(--green);color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="doDirectSearch()">검색</button>
   </div>
 
-  <!-- 정렬 -->
   <div class="option-group">
     <div class="option-label">정렬</div>
     <div class="pill-group" id="sortGroup">
@@ -248,7 +196,6 @@ input[type="date"] { font-size: 12px; }
     </div>
   </div>
 
-  <!-- 기간 -->
   <div class="option-group">
     <div class="option-label">기간</div>
     <div class="pill-group" id="periodGroup">
@@ -272,7 +219,6 @@ input[type="date"] { font-size: 12px; }
   <div id="errorMsg" class="error-box" style="display:none;"></div>
 </div>
 
-<!-- LIST HEADER -->
 <div class="list-header" id="listHeader">
   <div class="list-meta">
     <span class="count-badge" id="articleCount">0</span>
@@ -281,7 +227,6 @@ input[type="date"] { font-size: 12px; }
   <button class="select-all-btn" onclick="toggleSelectAll()">전체선택</button>
 </div>
 
-<!-- ARTICLE LIST -->
 <div class="article-list" id="articleList">
   <div class="empty-state">
     <div class="icon">📰</div>
@@ -290,13 +235,10 @@ input[type="date"] { font-size: 12px; }
   </div>
 </div>
 
-<!-- COPY BAR -->
 <div class="copy-bar">
   <button class="btn-copy" id="copyBtn" onclick="copyUrls()" disabled>URL 복사 (0개)</button>
-  <button class="btn-share" id="shareBtn" onclick="shareUrls()" disabled>공유 📤</button>
 </div>
 
-<!-- MODAL -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
 <div class="modal" id="modal">
   <div class="modal-handle"></div>
@@ -329,15 +271,11 @@ let currentArticleUrl = '';
 let sortVal = 'date';
 let periodVal = '1d';
 
-// ── INIT ──
 (function init() {
   const id = localStorage.getItem('naver_client_id') || '';
   const secret = localStorage.getItem('naver_client_secret') || '';
-  if (id && secret) {
-    document.getElementById('apiDot').classList.add('active');
-  }
+  if (id && secret) document.getElementById('apiDot').classList.add('active');
 
-  // Presets
   const presets = JSON.parse(localStorage.getItem('naver_presets2') || 'null') || [];
   [0,1,2].forEach(i => {
     const p = presets[i] || {};
@@ -347,11 +285,9 @@ let periodVal = '1d';
     if (i < 2) { const erow = document.getElementById(`rowop${i}`); if (erow) erow.value = p.rowop || 'OR'; }
   });
 
-  // Sort
   sortVal = localStorage.getItem('naver_sort') || 'date';
   document.querySelectorAll('#sortGroup .pill').forEach(p => { if (p.dataset.val === sortVal) p.classList.add('active'); });
 
-  // Period
   periodVal = localStorage.getItem('naver_period') || '1d';
   document.querySelectorAll('#periodGroup .pill').forEach(p => { if (p.dataset.val === periodVal) p.classList.add('active'); });
   if (periodVal === 'custom') document.getElementById('dateRange').classList.add('open');
@@ -361,13 +297,9 @@ let periodVal = '1d';
   document.getElementById('startDate').value = localStorage.getItem('naver_start') || today;
 })();
 
-// ── API ──
-function toggleApiFields() {
-  document.getElementById('apiFields').classList.toggle('open');
-}
+function toggleApiFields() { document.getElementById('apiFields').classList.toggle('open'); }
 function cancelApiFields() {
   document.getElementById('apiFields').classList.remove('open');
-  // 입력란 초기화 (기존 저장값 유지)
   document.getElementById('clientId').value = '';
   document.getElementById('clientSecret').value = '';
 }
@@ -382,7 +314,6 @@ function saveApiKeys() {
   showToast('✅ API 키가 저장되었습니다.');
 }
 
-// ── PRESETS ──
 function savePresets() {
   const presets = [0,1,2].map(i => ({
     a: document.getElementById(`p${i}a`).value,
@@ -401,7 +332,7 @@ function buildQueries(row) {
   if (!a) return [b];
   if (!b) return [a];
   if (op === 'AND') return [`${a} ${b}`];
-  return [a, b]; // OR → 각각 별도 검색
+  return [a, b];
 }
 
 async function searchPreset(row) {
@@ -412,9 +343,7 @@ async function searchPreset(row) {
 
 async function searchAll() {
   const queries = [];
-  [0,1,2].forEach(i => {
-    buildQueries(i).forEach(q => { if (q && !queries.includes(q)) queries.push(q); });
-  });
+  [0,1,2].forEach(i => { buildQueries(i).forEach(q => { if (q && !queries.includes(q)) queries.push(q); }); });
   if (!queries.length) { showToast('키워드를 입력해주세요.'); return; }
   await runSearch(queries);
 }
@@ -425,7 +354,6 @@ async function doDirectSearch() {
   await runSearch([kw]);
 }
 
-// ── SEARCH ──
 async function runSearch(queries) {
   const clientId = localStorage.getItem('naver_client_id') || '';
   const clientSecret = localStorage.getItem('naver_client_secret') || '';
@@ -434,7 +362,6 @@ async function runSearch(queries) {
     document.getElementById('apiFields').classList.add('open');
     return showError('API 키를 먼저 저장해주세요.');
   }
-
   selectedIds.clear(); activeId = null; articles = [];
   updateCountUI();
   document.getElementById('listHeader').classList.remove('visible');
@@ -449,30 +376,20 @@ async function runSearch(queries) {
           </div>
         </div>`).join('')}
     </div>`;
-
   try {
     const { start, end } = getDateRange();
     const allItems = [];
     const seenLinks = new Set();
-
     for (const query of queries) {
       const params = new URLSearchParams({ query, display: 100, start: 1, sort: sortVal, clientId, clientSecret });
       const res = await fetch(`/.netlify/functions/news?${params}`);
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `오류 ${res.status}`);
-      }
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || `오류 ${res.status}`); }
       const data = await res.json();
       (data.items || []).forEach(item => {
         const link = item.originallink || item.link;
-        if (!seenLinks.has(link)) {
-          seenLinks.add(link);
-          allItems.push(item);
-        }
+        if (!seenLinks.has(link)) { seenLinks.add(link); allItems.push(item); }
       });
     }
-
-    // 날짜 필터 후 최신순 정렬
     articles = allItems
       .filter(item => isInRange(item.pubDate, start, end))
       .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
@@ -482,7 +399,6 @@ async function runSearch(queries) {
         link: item.originallink || item.link,
         date: formatDate(item.pubDate),
       }));
-
     renderList();
   } catch(e) {
     showError(e.message || '검색 중 오류가 발생했습니다.');
@@ -490,7 +406,6 @@ async function runSearch(queries) {
   }
 }
 
-// ── RENDER ──
 function renderList() {
   const list = document.getElementById('articleList');
   const header = document.getElementById('listHeader');
@@ -508,11 +423,11 @@ function renderList() {
         <div class="article-title">${a.title}</div>
         <div class="article-date">${a.date}</div>
       </div>
+      <button class="article-share-btn" onclick="event.stopPropagation();shareOne(${a.id})">📤</button>
       <span class="article-arrow">›</span>
     </div>`).join('') + `</div>`;
 }
 
-// ── SELECTION ──
 function toggleCheck(id) {
   if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
   updateCountUI();
@@ -523,33 +438,6 @@ function updateCountUI() {
   const btn = document.getElementById('copyBtn');
   btn.disabled = n === 0;
   btn.textContent = `URL 복사 (${n}개)`;
-  const shareBtn = document.getElementById('shareBtn');
-  shareBtn.disabled = n === 0;
-  shareBtn.textContent = `공유 📤 (${n}개)`;
-}
-
-async function shareUrls() {
-  if (!selectedIds.size) return;
-  const selected = [...selectedIds].map(id => articles[id]);
-
-  if (!navigator.share) {
-    showToast('이 브라우저는 공유 기능을 지원하지 않아요.');
-    return;
-  }
-
-  for (const a of selected) {
-    try {
-      await navigator.share({
-        title: a.title,
-        url: a.link
-      });
-      // 잠깐 대기 후 다음 공유
-      await new Promise(r => setTimeout(r, 500));
-    } catch(e) {
-      // 사용자가 취소하면 중단
-      break;
-    }
-  }
 }
 function toggleSelectAll() {
   if (selectedIds.size === articles.length) selectedIds.clear();
@@ -557,7 +445,18 @@ function toggleSelectAll() {
   renderList();
 }
 
-// ── SORT / PERIOD ──
+async function shareOne(id) {
+  const a = articles[id];
+  if (navigator.share) {
+    try { await navigator.share({ title: a.title, url: a.link }); } catch(e) {}
+  } else {
+    const text = `📰 ${a.title}\n${a.link}`;
+    navigator.clipboard.writeText(text)
+      .then(() => showToast('✅ 클립보드에 복사됐어요!'))
+      .catch(() => showToast('복사 실패'));
+  }
+}
+
 function selectSort(el) {
   document.querySelectorAll('#sortGroup .pill').forEach(p => p.classList.remove('active'));
   el.classList.add('active'); sortVal = el.dataset.val;
@@ -570,7 +469,6 @@ function selectPeriod(el) {
   document.getElementById('dateRange').classList.toggle('open', periodVal === 'custom');
 }
 
-// ── DATE ──
 function getDateRange() {
   if (periodVal === 'all') return { start: null, end: null };
   if (periodVal === 'custom') {
@@ -581,10 +479,7 @@ function getDateRange() {
   }
   const map = { '1h': 1/24, '1d': 1, '1w': 7, '1m': 30, '3m': 90 };
   const now = new Date();
-  return {
-    start: now.getTime() - (map[periodVal]||1) * 86400000,
-    end: now.getTime()
-  };
+  return { start: now.getTime() - (map[periodVal]||1)*86400000, end: now.getTime() };
 }
 function isInRange(pubDate, start, end) {
   const d = new Date(pubDate).getTime();
@@ -592,8 +487,6 @@ function isInRange(pubDate, start, end) {
   if (end && d > end) return false;
   return true;
 }
-
-// ── UTILS ──
 function stripHtml(html) {
   return html.replace(/<[^>]*>/g,'').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#\d+;/g,'');
 }
@@ -613,13 +506,10 @@ function showError(msg) {
   el.textContent = msg; el.style.display = msg ? 'block' : 'none';
 }
 
-// ── MODAL ──
 function showBlocked() {
   document.getElementById('modalBlocked').classList.add('show');
   document.getElementById('articleFrame').style.display = 'none';
-  // 차단되면 자동으로 새 탭으로 열기
   window.open(currentArticleUrl, '_blank');
-  closeModal();
 }
 function openCurrent() { window.open(currentArticleUrl, '_blank'); }
 function closeModal() {
@@ -628,10 +518,8 @@ function closeModal() {
   document.body.style.overflow = '';
   document.getElementById('articleFrame').src = '';
   renderList();
-  // 백키 히스토리 처리
   if (history.state && history.state.modal) history.back();
 }
-
 function openModal(id) {
   activeId = id;
   document.querySelectorAll('.article-item').forEach(el => el.classList.remove('active'));
@@ -648,7 +536,6 @@ function openModal(id) {
   document.getElementById('modal').classList.add('open');
   document.getElementById('modalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
-  // 백키 히스토리 추가
   history.pushState({ modal: true }, '');
   setTimeout(() => {
     try {
@@ -658,9 +545,7 @@ function openModal(id) {
     } catch { showBlocked(); }
   }, 2000);
 }
-
-// 백키 누르면 모달 닫기
-window.addEventListener('popstate', function(e) {
+window.addEventListener('popstate', function() {
   const modal = document.getElementById('modal');
   if (modal.classList.contains('open')) {
     modal.classList.remove('open');
@@ -671,10 +556,9 @@ window.addEventListener('popstate', function(e) {
   }
 });
 
-// ── COPY ──
 function copyUrls() {
   if (!selectedIds.size) return;
-  const urls = [...selectedIds].map(id => `📰 ${articles[id].title}\n${articles[id].link}`).join('\n\n');
+  const urls = [...selectedIds].map(id => `📰 ${articles[id].title}\n${articles[id].link}`).join('\n\n\n') + '\n.';
   navigator.clipboard.writeText(urls)
     .then(() => showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`))
     .catch(() => {
