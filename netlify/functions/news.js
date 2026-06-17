@@ -1,32 +1,700 @@
-exports.handler = async function(event) {
-  const { query, display, start, sort, clientId, clientSecret } = event.queryStringParameters || {};
-  if (!query || !clientId || !clientSecret) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: '필수 파라미터가 없습니다.' })
-    };
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>네이버 뉴스 수집기</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --green: #03C75A;
+  --green-dark: #02a84b;
+  --green-light: #e8f9f0;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --border: #e4e6ea;
+  --text: #191919;
+  --text-sub: #555;
+  --text-muted: #999;
+  --radius-sm: 8px;
+}
+html, body { height: 100%; }
+body { font-family: -apple-system, 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+/* HEADER */
+.header { position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 48px; }
+.logo { font-size: 20px; font-weight: 900; color: var(--green); }
+.logo-sub { font-size: 13px; color: var(--text-muted); }
+
+/* SEARCH PANEL */
+.search-panel { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+/* API */
+.api-row-compact { display: flex; align-items: center; gap: 8px; }
+.api-row-compact span { font-size: 12px; color: var(--text-sub); }
+.api-reauth-btn { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); background: white; font-size: 11px; color: var(--text-sub); cursor: pointer; transition: all 0.15s; }
+.api-reauth-btn:hover { border-color: var(--green); color: var(--green); }
+.api-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+.api-dot.active { background: var(--green); }
+.api-fields { display: none; flex-direction: column; gap: 6px; background: var(--green-light); border: 1px solid #c3ecd6; border-radius: var(--radius-sm); padding: 10px; }
+.api-fields.open { display: flex; }
+.api-field-row { display: flex; align-items: center; gap: 8px; }
+.api-field-row span { font-size: 11px; color: var(--text-sub); min-width: 50px; }
+.api-save-btn { padding: 7px; border-radius: var(--radius-sm); background: var(--green); color: white; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
+
+/* PRESETS */
+.preset-section { display: flex; flex-direction: column; gap: 4px; }
+.preset-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.preset-row { display: flex; align-items: center; gap: 5px; }
+.preset-input { flex: 1; min-width: 0; }
+.and-label { font-size: 11px; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+.preset-search-btn { padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; color: var(--text-sub); cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
+.preset-search-btn:hover { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
+.or-divider { text-align: left; font-size: 11px; font-weight: 700; color: var(--text-muted); padding: 1px 0 1px 2px; letter-spacing: 1px; }
+.or-row { display: flex; align-items: center; padding: 2px 0; }
+.paren { font-size: 15px; font-weight: 700; color: var(--text-muted); flex-shrink: 0; }
+.op-select, .row-op-select {
+  padding: 5px 4px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 11px; font-weight: 700; color: var(--green-dark);
+  background: var(--green-light); cursor: pointer; flex-shrink: 0;
+  -webkit-appearance: none; text-align: center;
+}
+.row-op-select { font-size: 12px; padding: 3px 8px; }
+.search-all-btn { width: 100%; padding: 10px; background: var(--green); color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+.search-all-btn:hover { background: var(--green-dark); }
+
+/* DIVIDER */
+.section-divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+/* DIRECT SEARCH */
+.direct-search-row { display: flex; gap: 8px; }
+.direct-search-row input { flex: 1; }
+
+/* OPTIONS */
+.option-group { display: flex; flex-direction: column; gap: 4px; }
+.option-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.pill-group { display: flex; flex-wrap: wrap; gap: 4px; }
+.pill { padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--text-sub); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.pill:hover { border-color: var(--green); color: var(--green); }
+.pill.active { background: var(--green); border-color: var(--green); color: white; font-weight: 700; }
+.date-range { display: none; flex-direction: column; gap: 6px; background: #fafafa; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; margin-top: 2px; }
+.date-range.open { display: flex; }
+.date-range-row { display: flex; align-items: center; gap: 8px; }
+.date-range-row span { font-size: 12px; color: var(--text-muted); }
+
+/* INPUTS */
+input[type="text"], input[type="date"] {
+  width: 100%; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 13px; color: var(--text); background: var(--surface);
+  outline: none; transition: border 0.15s; -webkit-appearance: none;
+}
+input:focus { border-color: var(--green); }
+input[type="date"] { font-size: 12px; }
+
+/* LIST HEADER */
+.list-header { display: none; align-items: center; justify-content: space-between; padding: 8px 16px; background: #fafafa; border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 90; }
+.list-header.visible { display: flex; }
+.list-meta { display: flex; align-items: center; gap: 8px; }
+.count-badge { background: var(--green); color: white; font-size: 11px; font-weight: 700; border-radius: 20px; padding: 2px 9px; }
+.selected-count { font-size: 12px; color: var(--text-muted); }
+.select-all-btn { font-size: 12px; color: var(--green-dark); font-weight: 700; background: none; border: none; cursor: pointer; padding: 4px; }
+
+/* ARTICLE LIST */
+.article-list { padding-bottom: 80px; }
+.article-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #f0f0f0; background: var(--surface); cursor: pointer; transition: background 0.1s; }
+.article-item:active { background: #f5f5f5; }
+.article-item.active { background: var(--green-light); border-left: 3px solid var(--green); padding-left: 13px; }
+.article-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; accent-color: var(--green); cursor: pointer; }
+.article-info { flex: 1; min-width: 0; }
+.article-title { font-size: 14px; font-weight: 500; line-height: 1.5; margin-bottom: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.article-date { font-size: 11px; color: var(--text-muted); }
+.article-arrow { color: var(--text-muted); font-size: 16px; margin-top: 2px; flex-shrink: 0; }
+.article-share-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px 4px; flex-shrink: 0; opacity: 0.6; }
+.article-share-btn:hover { opacity: 1; }
+
+/* COPY BAR */
+.copy-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px; z-index: 100; display: flex; gap: 8px; }
+.btn-copy { flex: 1; padding: 12px; background: #1a1a1a; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+.btn-copy:hover { background: #333; }
+.btn-copy:disabled { background: #ccc; cursor: not-allowed; }
+.btn-share { padding: 12px 16px; background: #FEE500; color: #3A1D1D; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s; white-space: nowrap; flex-shrink: 0; }
+.btn-share:hover { background: #f0d800; }
+.btn-share:disabled { background: #ccc; color: white; cursor: not-allowed; }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.4); }
+.modal-overlay.open { display: block; }
+.modal { position: fixed; bottom: 0; left: 0; right: 0; height: 88vh; background: var(--surface); border-radius: 20px 20px 0 0; display: none; flex-direction: column; z-index: 201; }
+.modal.open { display: flex; animation: slideUp 0.25s ease-out; }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle { width: 36px; height: 4px; border-radius: 2px; background: #ddd; margin: 10px auto 6px; flex-shrink: 0; }
+.modal-header { padding: 0 16px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.modal-title { font-size: 15px; font-weight: 700; line-height: 1.4; margin-bottom: 6px; }
+.modal-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.modal-date { font-size: 12px; color: var(--text-muted); }
+.modal-open-btn { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px; background: none; font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+.modal-open-btn:hover { border-color: var(--green); color: var(--green); }
+.modal-body { flex: 1; overflow: hidden; position: relative; }
+.modal-body iframe { width: 100%; height: 100%; border: none; }
+.modal-blocked { display: none; position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 32px; background: var(--bg); }
+.modal-blocked.show { display: flex; }
+.modal-blocked .icon { font-size: 40px; }
+.modal-blocked h3 { font-size: 15px; font-weight: 700; }
+.modal-blocked p { font-size: 13px; color: var(--text-sub); line-height: 1.6; }
+.blocked-url { background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px; font-size: 11px; color: var(--text-sub); word-break: break-all; width: 100%; cursor: pointer; }
+
+/* STATES */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 60px 32px; text-align: center; color: var(--text-muted); }
+.empty-state .icon { font-size: 48px; }
+.empty-state h3 { font-size: 15px; font-weight: 600; color: var(--text-sub); }
+.empty-state p { font-size: 13px; line-height: 1.6; }
+.skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 4px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.error-box { padding: 8px 12px; background: #fff3f3; border: 1px solid #ffcdd2; border-radius: var(--radius-sm); font-size: 12px; color: #c62828; }
+.no-results { padding: 48px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(10px); background: #1a1a1a; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; transition: all 0.25s; pointer-events: none; z-index: 999; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="logo">N</span>
+  <span class="logo-sub">뉴스 수집기</span>
+</div>
+
+<div class="search-panel">
+
+  <!-- API 인증 -->
+  <div>
+    <div class="api-row-compact">
+      <span class="api-dot" id="apiDot"></span>
+      <span>🔑 API 인증</span>
+      <button class="api-reauth-btn" onclick="toggleApiFields()">재인증</button>
+    </div>
+    <div class="api-fields" id="apiFields">
+      <div class="api-field-row">
+        <span>Client ID</span>
+        <input type="text" id="clientId" placeholder="Client ID 입력" autocomplete="off">
+      </div>
+      <div class="api-field-row">
+        <span>Secret</span>
+        <input type="text" id="clientSecret" placeholder="Client Secret 입력" autocomplete="off">
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="api-save-btn" onclick="saveApiKeys()" style="flex:1;">저장</button>
+        <button class="api-save-btn" onclick="cancelApiFields()" style="flex:1;background:#999;">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 즐겨찾기 키워드 (AND/OR) -->
+  <div class="preset-section">
+    <div class="preset-label">⭐ 즐겨찾기 키워드</div>
+
+    <!-- 1행 -->
+    <div class="preset-row">
+      <span class="paren">(</span>
+      <input type="text" class="preset-input" id="p0a" placeholder="키워드1" oninput="savePresets()">
+      <select class="op-select" id="op0" onchange="savePresets()"><option value="AND">AND</option><option value="OR">OR</option></select>
+      <input type="text" class="preset-input" id="p0b" placeholder="키워드2" oninput="savePresets()">
+      <span class="paren">)</span>
+      <button class="preset-search-btn" onclick="searchPreset(0)">🔍</button>
+    </div>
+    <div class="or-row">
+      <select class="row-op-select" id="rowop0" onchange="savePresets()"><option value="OR">OR</option><option value="AND">AND</option></select>
+    </div>
+
+    <!-- 2행 -->
+    <div class="preset-row">
+      <span class="paren">(</span>
+      <input type="text" class="preset-input" id="p1a" placeholder="키워드3" oninput="savePresets()">
+      <select class="op-select" id="op1" onchange="savePresets()"><option value="AND">AND</option><option value="OR">OR</option></select>
+      <input type="text" class="preset-input" id="p1b" placeholder="키워드4" oninput="savePresets()">
+      <span class="paren">)</span>
+      <button class="preset-search-btn" onclick="searchPreset(1)">🔍</button>
+    </div>
+    <div class="or-row">
+      <select class="row-op-select" id="rowop1" onchange="savePresets()"><option value="OR">OR</option><option value="AND">AND</option></select>
+    </div>
+
+    <!-- 3행 -->
+    <div class="preset-row">
+      <span class="paren">(</span>
+      <input type="text" class="preset-input" id="p2a" placeholder="키워드5" oninput="savePresets()">
+      <select class="op-select" id="op2" onchange="savePresets()"><option value="AND">AND</option><option value="OR">OR</option></select>
+      <input type="text" class="preset-input" id="p2b" placeholder="키워드6" oninput="savePresets()">
+      <span class="paren">)</span>
+      <button class="preset-search-btn" onclick="searchPreset(2)">🔍</button>
+    </div>
+
+    <button class="search-all-btn" onclick="searchAll()">즐겨찾기 전체 검색</button>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- 직접 검색 -->
+  <div class="direct-search-row">
+    <input type="text" id="keyword" placeholder="직접 검색..." autocomplete="off"
+      onkeydown="if(event.key==='Enter') doDirectSearch()">
+    <button style="padding:8px 14px;background:var(--green);color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="doDirectSearch()">검색</button>
+  </div>
+
+  <!-- 정렬 -->
+  <div class="option-group">
+    <div class="option-label">정렬</div>
+    <div class="pill-group" id="sortGroup">
+      <button class="pill" data-val="date" onclick="selectSort(this)">최신순</button>
+      <button class="pill" data-val="sim" onclick="selectSort(this)">관련도순</button>
+    </div>
+  </div>
+
+  <!-- 기간 -->
+  <div class="option-group">
+    <div class="option-label">기간</div>
+    <div class="pill-group" id="periodGroup">
+      <button class="pill" data-val="all" onclick="selectPeriod(this)">전체</button>
+      <button class="pill" data-val="1h" onclick="selectPeriod(this)">1시간</button>
+      <button class="pill" data-val="1d" onclick="selectPeriod(this)">1일</button>
+      <button class="pill" data-val="1w" onclick="selectPeriod(this)">1주</button>
+      <button class="pill" data-val="1m" onclick="selectPeriod(this)">1개월</button>
+      <button class="pill" data-val="3m" onclick="selectPeriod(this)">3개월</button>
+      <button class="pill" data-val="custom" onclick="selectPeriod(this)">직접입력</button>
+    </div>
+    <div class="date-range" id="dateRange">
+      <div class="date-range-row">
+        <input type="date" id="startDate">
+        <span>~</span>
+        <input type="date" id="endDate">
+      </div>
+    </div>
+  </div>
+
+  <div id="errorMsg" class="error-box" style="display:none;"></div>
+</div>
+
+<!-- LIST HEADER -->
+<div class="list-header" id="listHeader">
+  <div class="list-meta">
+    <span class="count-badge" id="articleCount">0</span>
+    <span class="selected-count" id="selectedCount">0개 선택</span>
+  </div>
+  <button class="select-all-btn" onclick="toggleSelectAll()">전체선택</button>
+</div>
+
+<!-- ARTICLE LIST -->
+<div class="article-list" id="articleList">
+  <div class="empty-state">
+    <div class="icon">📰</div>
+    <h3>뉴스를 검색해보세요</h3>
+    <p>즐겨찾기 키워드를 설정하거나<br>직접 검색어를 입력해주세요.</p>
+  </div>
+</div>
+
+<!-- COPY BAR -->
+<div class="copy-bar">
+  <button class="btn-copy" id="copyBtn" onclick="copyUrls()" disabled>URL 복사 (0개)</button>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+<div class="modal" id="modal">
+  <div class="modal-handle"></div>
+  <div class="modal-header">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-meta">
+      <span class="modal-date" id="modalDate"></span>
+      <button class="modal-open-btn" id="modalOpenBtn">🔗 새 탭으로 열기</button>
+    </div>
+  </div>
+  <div class="modal-body">
+    <iframe id="articleFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" title="기사 본문"></iframe>
+    <div class="modal-blocked" id="modalBlocked">
+      <div class="icon">🔒</div>
+      <h3>미리보기가 차단되었습니다</h3>
+      <p>이 언론사는 보안 정책으로<br>직접 표시가 불가능해요.</p>
+      <div class="blocked-url" id="blockedUrl" onclick="openCurrent()"></div>
+      <button style="width:100%;margin-top:4px;padding:10px;background:var(--green);color:white;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;" onclick="openCurrent()">새 탭으로 열기</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let articles = [];
+let selectedIds = new Set();
+let activeId = null;
+let currentArticleUrl = '';
+let sortVal = 'date';
+let periodVal = '1d';
+
+// ── INIT ──
+(function init() {
+  const id = localStorage.getItem('naver_client_id') || '';
+  const secret = localStorage.getItem('naver_client_secret') || '';
+  if (id && secret) {
+    document.getElementById('apiDot').classList.add('active');
   }
-  const params = new URLSearchParams({ query, display: display || 10, start: start || 1, sort: sort || 'date' });
+
+  // Presets
+  const presets = JSON.parse(localStorage.getItem('naver_presets2') || 'null') || [];
+  [0,1,2].forEach(i => {
+    const p = presets[i] || {};
+    const ea = document.getElementById(`p${i}a`); if (ea) ea.value = p.a || '';
+    const eb = document.getElementById(`p${i}b`); if (eb) eb.value = p.b || '';
+    const eop = document.getElementById(`op${i}`); if (eop) eop.value = p.op || 'AND';
+    if (i < 2) { const erow = document.getElementById(`rowop${i}`); if (erow) erow.value = p.rowop || 'OR'; }
+  });
+
+  // Sort
+  sortVal = localStorage.getItem('naver_sort') || 'date';
+  document.querySelectorAll('#sortGroup .pill').forEach(p => { if (p.dataset.val === sortVal) p.classList.add('active'); });
+
+  // Period
+  periodVal = localStorage.getItem('naver_period') || '1d';
+  document.querySelectorAll('#periodGroup .pill').forEach(p => { if (p.dataset.val === periodVal) p.classList.add('active'); });
+  if (periodVal === 'custom') document.getElementById('dateRange').classList.add('open');
+
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('endDate').value = localStorage.getItem('naver_end') || today;
+  document.getElementById('startDate').value = localStorage.getItem('naver_start') || today;
+})();
+
+// ── API ──
+function toggleApiFields() {
+  document.getElementById('apiFields').classList.toggle('open');
+}
+function cancelApiFields() {
+  document.getElementById('apiFields').classList.remove('open');
+  // 입력란 초기화 (기존 저장값 유지)
+  document.getElementById('clientId').value = '';
+  document.getElementById('clientSecret').value = '';
+}
+function saveApiKeys() {
+  const id = document.getElementById('clientId').value.trim();
+  const secret = document.getElementById('clientSecret').value.trim();
+  if (!id || !secret) { showToast('ID와 Secret을 모두 입력해주세요.'); return; }
+  localStorage.setItem('naver_client_id', id);
+  localStorage.setItem('naver_client_secret', secret);
+  document.getElementById('apiDot').classList.add('active');
+  document.getElementById('apiFields').classList.remove('open');
+  showToast('✅ API 키가 저장되었습니다.');
+}
+
+// ── PRESETS ──
+function savePresets() {
+  const presets = [0,1,2].map(i => ({
+    a: document.getElementById(`p${i}a`).value,
+    b: document.getElementById(`p${i}b`).value,
+    op: document.getElementById(`op${i}`).value,
+    rowop: i < 2 ? document.getElementById(`rowop${i}`).value : 'OR'
+  }));
+  localStorage.setItem('naver_presets2', JSON.stringify(presets));
+}
+
+function buildQueries(row) {
+  const a = document.getElementById(`p${row}a`).value.trim();
+  const b = document.getElementById(`p${row}b`).value.trim();
+  const op = document.getElementById(`op${row}`).value;
+  if (!a && !b) return [];
+  if (!a) return [b];
+  if (!b) return [a];
+  if (op === 'AND') return [`${a} ${b}`];
+  return [a, b]; // OR → 각각 별도 검색
+}
+
+async function searchPreset(row) {
+  const queries = buildQueries(row);
+  if (!queries.length) { showToast('키워드를 입력해주세요.'); return; }
+  await runSearch(queries);
+}
+
+async function searchAll() {
+  const queries = [];
+  [0,1,2].forEach(i => {
+    buildQueries(i).forEach(q => { if (q && !queries.includes(q)) queries.push(q); });
+  });
+  if (!queries.length) { showToast('키워드를 입력해주세요.'); return; }
+  await runSearch(queries);
+}
+
+async function doDirectSearch() {
+  const kw = document.getElementById('keyword').value.trim();
+  if (!kw) { showError('키워드를 입력해주세요.'); return; }
+  await runSearch([kw]);
+}
+
+// ── SEARCH ──
+async function runSearch(queries) {
+  const clientId = localStorage.getItem('naver_client_id') || '';
+  const clientSecret = localStorage.getItem('naver_client_secret') || '';
+  showError('');
+  if (!clientId || !clientSecret) {
+    document.getElementById('apiFields').classList.add('open');
+    return showError('API 키를 먼저 저장해주세요.');
+  }
+
+  selectedIds.clear(); activeId = null; articles = [];
+  updateCountUI();
+  document.getElementById('listHeader').classList.remove('visible');
+  document.getElementById('articleList').innerHTML = `
+    <div style="background:white;">
+      ${Array(6).fill(`
+        <div style="display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f0f0;">
+          <div class="skeleton" style="width:18px;height:18px;flex-shrink:0;border-radius:3px;margin-top:2px;"></div>
+          <div style="flex:1;">
+            <div class="skeleton" style="height:38px;margin-bottom:8px;"></div>
+            <div class="skeleton" style="height:11px;width:40%;"></div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+
   try {
-    const response = await fetch(`https://openapi.naver.com/v1/search/news.json?${params}`, {
-      headers: {
-        'X-Naver-Client-Id': clientId,
-        'X-Naver-Client-Secret': clientSecret
+    const { start, end } = getDateRange();
+    const allItems = [];
+    const seenLinks = new Set();
+
+    for (const query of queries) {
+      const params = new URLSearchParams({ query, display: 100, start: 1, sort: sortVal, clientId, clientSecret });
+      const res = await fetch(`/.netlify/functions/news?${params}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `오류 ${res.status}`);
       }
-    });
-    const data = await response.json();
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify(data)
-    };
-  } catch (e) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: e.message })
-    };
+      const data = await res.json();
+      (data.items || []).forEach(item => {
+        const link = item.originallink || item.link;
+        if (!seenLinks.has(link)) {
+          seenLinks.add(link);
+          allItems.push(item);
+        }
+      });
+    }
+
+    // 날짜 필터 후 최신순 정렬
+    articles = allItems
+      .filter(item => isInRange(item.pubDate, start, end))
+      .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
+      .map((item, i) => ({
+        id: i,
+        title: stripHtml(item.title),
+        link: item.originallink || item.link,
+        date: formatDate(item.pubDate),
+      }));
+
+    renderList();
+  } catch(e) {
+    showError(e.message || '검색 중 오류가 발생했습니다.');
+    document.getElementById('articleList').innerHTML = `<div class="no-results">결과를 불러오지 못했습니다.</div>`;
   }
-};
+}
+
+// ── RENDER ──
+function renderList() {
+  const list = document.getElementById('articleList');
+  const header = document.getElementById('listHeader');
+  if (!articles.length) {
+    list.innerHTML = `<div class="no-results">해당 기간에 기사가 없습니다.</div>`;
+    header.classList.remove('visible'); return;
+  }
+  header.classList.add('visible');
+  document.getElementById('articleCount').textContent = articles.length;
+  updateCountUI();
+  list.innerHTML = `<div style="background:white;">` + articles.map(a => `
+    <div class="article-item ${a.id === activeId ? 'active' : ''}" id="item-${a.id}" onclick="openModal(${a.id})">
+      <input type="checkbox" ${selectedIds.has(a.id) ? 'checked' : ''} onclick="event.stopPropagation();toggleCheck(${a.id})">
+      <div class="article-info">
+        <div class="article-title">${a.title}</div>
+        <div class="article-date">${a.date}</div>
+      </div>
+      <button class="article-share-btn" onclick="event.stopPropagation();shareOne(${a.id})">📤</button>
+      <span class="article-arrow">›</span>
+    </div>`).join('') + `</div>`;
+}
+
+// ── SELECTION ──
+function toggleCheck(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  updateCountUI();
+}
+function updateCountUI() {
+  const n = selectedIds.size;
+  document.getElementById('selectedCount').textContent = `${n}개 선택`;
+  const btn = document.getElementById('copyBtn');
+  btn.disabled = n === 0;
+  btn.textContent = `URL 복사 (${n}개)`;
+}
+
+async function shareOne(id) {
+  const a = articles[id];
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: a.title, url: a.link });
+    } catch(e) {}
+  } else {
+    // PC는 클립보드에 복사
+    const text = `📰 ${a.title}\n${a.link}`;
+    navigator.clipboard.writeText(text)
+      .then(() => showToast('✅ 클립보드에 복사됐어요!'))
+      .catch(() => showToast('복사 실패'));
+  }
+}
+  if (!selectedIds.size) return;
+  const selected = [...selectedIds].map(id => articles[id]);
+
+  if (!navigator.share) {
+    showToast('이 브라우저는 공유 기능을 지원하지 않아요.');
+    return;
+  }
+
+  for (const a of selected) {
+    try {
+      await navigator.share({
+        title: a.title,
+        url: a.link
+      });
+      // 잠깐 대기 후 다음 공유
+      await new Promise(r => setTimeout(r, 500));
+    } catch(e) {
+      // 사용자가 취소하면 중단
+      break;
+    }
+  }
+}
+function toggleSelectAll() {
+  if (selectedIds.size === articles.length) selectedIds.clear();
+  else articles.forEach(a => selectedIds.add(a.id));
+  renderList();
+}
+
+// ── SORT / PERIOD ──
+function selectSort(el) {
+  document.querySelectorAll('#sortGroup .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active'); sortVal = el.dataset.val;
+  localStorage.setItem('naver_sort', sortVal);
+}
+function selectPeriod(el) {
+  document.querySelectorAll('#periodGroup .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active'); periodVal = el.dataset.val;
+  localStorage.setItem('naver_period', periodVal);
+  document.getElementById('dateRange').classList.toggle('open', periodVal === 'custom');
+}
+
+// ── DATE ──
+function getDateRange() {
+  if (periodVal === 'all') return { start: null, end: null };
+  if (periodVal === 'custom') {
+    const s = document.getElementById('startDate').value;
+    const e = document.getElementById('endDate').value;
+    localStorage.setItem('naver_start', s); localStorage.setItem('naver_end', e);
+    return { start: s ? new Date(s).getTime() : null, end: e ? new Date(e+'T23:59:59').getTime() : null };
+  }
+  const map = { '1h': 1/24, '1d': 1, '1w': 7, '1m': 30, '3m': 90 };
+  const now = new Date();
+  return {
+    start: now.getTime() - (map[periodVal]||1) * 86400000,
+    end: now.getTime()
+  };
+}
+function isInRange(pubDate, start, end) {
+  const d = new Date(pubDate).getTime();
+  if (start && d < start) return false;
+  if (end && d > end) return false;
+  return true;
+}
+
+// ── UTILS ──
+function stripHtml(html) {
+  return html.replace(/<[^>]*>/g,'').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#\d+;/g,'');
+}
+function formatDate(pubDate) {
+  try {
+    const d = new Date(pubDate);
+    return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  } catch { return ''; }
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg; el.style.display = msg ? 'block' : 'none';
+}
+
+// ── MODAL ──
+function showBlocked() {
+  document.getElementById('modalBlocked').classList.add('show');
+  document.getElementById('articleFrame').style.display = 'none';
+  // 차단되면 자동으로 새 탭으로 열기 (모달 닫지 않음)
+  window.open(currentArticleUrl, '_blank');
+}
+function openCurrent() { window.open(currentArticleUrl, '_blank'); }
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  document.getElementById('articleFrame').src = '';
+  renderList();
+  // 백키 히스토리 처리
+  if (history.state && history.state.modal) history.back();
+}
+
+function openModal(id) {
+  activeId = id;
+  document.querySelectorAll('.article-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(`item-${id}`)?.classList.add('active');
+  const a = articles[id];
+  currentArticleUrl = a.link;
+  document.getElementById('modalTitle').textContent = a.title;
+  document.getElementById('modalDate').textContent = a.date;
+  document.getElementById('modalOpenBtn').onclick = () => window.open(a.link, '_blank');
+  document.getElementById('blockedUrl').textContent = a.link;
+  document.getElementById('articleFrame').src = a.link;
+  document.getElementById('articleFrame').style.display = 'block';
+  document.getElementById('modalBlocked').classList.remove('show');
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // 백키 히스토리 추가
+  history.pushState({ modal: true }, '');
+  setTimeout(() => {
+    try {
+      const frame = document.getElementById('articleFrame');
+      const doc = frame.contentDocument || frame.contentWindow?.document;
+      if (!doc || !doc.body || doc.body.innerHTML.trim() === '') showBlocked();
+    } catch { showBlocked(); }
+  }, 2000);
+}
+
+// 백키 누르면 모달 닫기
+window.addEventListener('popstate', function(e) {
+  const modal = document.getElementById('modal');
+  if (modal.classList.contains('open')) {
+    modal.classList.remove('open');
+    document.getElementById('modalOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+    document.getElementById('articleFrame').src = '';
+    renderList();
+  }
+});
+
+// ── COPY ──
+function copyUrls() {
+  if (!selectedIds.size) return;
+  const urls = [...selectedIds].map(id => `📰 ${articles[id].title}\n${articles[id].link}`).join('\n\n\n') + '\n.';
+  navigator.clipboard.writeText(urls)
+    .then(() => showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`))
+    .catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = urls; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`);
+    });
+}
+</script>
+</body>
+</html>
