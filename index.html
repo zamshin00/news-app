@@ -542,7 +542,9 @@ function saveApiKeys() {
 }
 
 function getSites() {
-  return JSON.parse(localStorage.getItem('naver_sites') || 'null') || [];
+  return JSON.parse(localStorage.getItem('naver_sites') || 'null') || [
+    { name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true }
+  ];
 }
 function saveSites(s) { localStorage.setItem('naver_sites', JSON.stringify(s)); }
 
@@ -552,7 +554,7 @@ function renderSites() {
       <input type="checkbox" class="site-check" ${s.enabled?'checked':''} onchange="toggleSite(${i})">
       <div class="site-info">
         <div class="site-name">${s.name}</div>
-        <div class="site-url">${s.domain||s.url}</div>
+        <div class="site-url" style="font-size:11px;color:var(--text-muted);">${s.fixed ? 'API 검색' : (s.domain||s.url)}</div>
       </div>
       ${s.fixed?'':`<button class="site-del-btn" onclick="deleteSite(${i})">🗑</button>`}
     </div>`).join('');
@@ -569,20 +571,41 @@ async function searchSite() {
   if (!clientId||!clientSecret) { showToast('API 키를 먼저 저장해주세요.'); return; }
   showToast('검색 중...');
   try {
-    const params = new URLSearchParams({query:`${query} 신문 홈페이지`,display:5,start:1,clientId,clientSecret});
-    const res = await fetch(`/.netlify/functions/news?${params}&type=web`);
+    // 웹문서 API로 신문사 홈페이지 검색
+    const params = new URLSearchParams({query:`${query} 신문사 공식 홈페이지`,display:10,start:1,clientId,clientSecret,type:'webkr'});
+    const res = await fetch(`/.netlify/functions/news?${params}`);
     const data = await res.json();
-    const items = (data.items||[]).slice(0,3);
     const el = document.getElementById('siteResults');
-    if (!items.length) { el.innerHTML=`<div class="site-result-header">검색 결과가 없어요.</div>`; el.classList.add('open'); return; }
+
+    // 도메인 기준 중복 제거 + 뉴스포털 제외
+    const excludes = ['naver.com','google.com','daum.net','nate.com','zum.com','kakao.com','youtube.com','facebook.com','instagram.com','twitter.com','wikipedia.org'];
+    const seen = new Set();
+    const items = (data.items||[]).filter(item => {
+      const domain = (item.link||'').replace(/https?:\/\//,'').split('/')[0].replace(/^www\./,'');
+      if (!domain) return false;
+      if (excludes.some(e => domain.includes(e))) return false;
+      if (seen.has(domain)) return false;
+      seen.add(domain);
+      return true;
+    }).slice(0,5);
+
+    if (!items.length) {
+      el.innerHTML=`<div class="site-result-header">검색 결과가 없어요. 직접 입력 탭을 이용해주세요.</div>`;
+      el.classList.add('open'); return;
+    }
     el.innerHTML = `<div class="site-result-header">"${query}" 검색 결과 — 맞는 사이트를 선택해주세요</div>`
       + items.map(item => {
-        const url = item.link||'';
-        const domain = url.replace(/https?:\/\//,'').split('/')[0];
-        const name = (item.title||'').replace(/<[^>]*>/g,'');
+        const rawUrl = item.link||'';
+        const domain = rawUrl.replace(/https?:\/\//,'').split('/')[0];
+        const safeUrl = 'https://' + domain;
+        const name = (item.title||'').replace(/<[^>]*>/g,'').replace(/\s*[-|].*/,'').trim();
+        const safeName = name.replace(/'/g,'\\'+'\'' ).replace(/"/g,'&quot;');
         return `<div class="site-result-item">
-          <div><div class="site-result-name">${name}</div><div class="site-result-url">${domain}</div></div>
-          <button class="site-add-btn" onclick="addSite('${name.replace(/'/g,"\\'")}','${url.replace(/'/g,"\\'")}')">추가</button>
+          <div style="flex:1;min-width:0;">
+            <div class="site-result-name">${name}</div>
+            <div class="site-result-url">${domain}</div>
+          </div>
+          <button class="site-add-btn" onclick="addSite('${safeName}','${safeUrl}')">추가</button>
         </div>`;
       }).join('');
     el.classList.add('open');
