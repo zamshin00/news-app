@@ -20,41 +20,40 @@
 }
 html, body { height: 100%; }
 body { font-family: -apple-system, 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
-.header { position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 48px; }
+.header { position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; height: 48px; gap: 8px; }
 .logo { font-size: 20px; font-weight: 900; color: var(--green); }
 .logo-sub { font-size: 13px; color: var(--text-muted); }
+.tab-bar { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 99; }
+.tab { flex: 1; padding: 11px 0; text-align: center; font-size: 13px; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; }
+.tab.active { color: var(--green); border-bottom: 2px solid var(--green); font-weight: 700; }
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* 검색 화면 */
 .search-panel { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
-.api-row-compact { display: flex; align-items: center; gap: 8px; }
-.api-row-compact span { font-size: 12px; color: var(--text-sub); }
-.api-reauth-btn { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); background: white; font-size: 11px; color: var(--text-sub); cursor: pointer; }
-.api-reauth-btn:hover { border-color: var(--green); color: var(--green); }
-.api-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
-.api-dot.active { background: var(--green); }
-.api-fields { display: none; flex-direction: column; gap: 6px; background: var(--green-light); border: 1px solid #c3ecd6; border-radius: var(--radius-sm); padding: 10px; }
-.api-fields.open { display: flex; }
-.api-field-row { display: flex; align-items: center; gap: 8px; }
-.api-field-row span { font-size: 11px; color: var(--text-sub); min-width: 50px; }
-.api-save-btn { padding: 7px; border-radius: var(--radius-sm); background: var(--green); color: white; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
-.preset-section { display: flex; flex-direction: column; gap: 4px; }
-.preset-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
-.preset-row { display: flex; align-items: center; gap: 5px; }
+.section-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.group-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.group-tab { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; }
+.group-tab.active { background: var(--green); border-color: var(--green); color: white; font-weight: 700; }
+.preset-row { display: flex; align-items: center; gap: 4px; }
 .preset-input { flex: 1; min-width: 0; }
-.preset-search-btn { padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; color: var(--text-sub); cursor: pointer; white-space: nowrap; flex-shrink: 0; }
-.preset-search-btn:hover { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
-.or-row { display: flex; align-items: center; padding: 2px 0; }
+.op-select { padding: 5px 4px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; color: var(--green); background: var(--green-light); cursor: pointer; flex-shrink: 0; -webkit-appearance: none; text-align: center; }
+.row-op-select { padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; color: var(--green); background: var(--green-light); cursor: pointer; -webkit-appearance: none; }
 .paren { font-size: 15px; font-weight: 700; color: var(--text-muted); flex-shrink: 0; }
-.op-select, .row-op-select { padding: 5px 4px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; color: var(--green-dark); background: var(--green-light); cursor: pointer; flex-shrink: 0; -webkit-appearance: none; text-align: center; }
-.row-op-select { font-size: 12px; padding: 3px 8px; }
+/* 입력창 내부 지우개 */
+.input-wrap { position: relative; flex: 1; min-width: 0; }
+.input-wrap input { width: 100%; padding-right: 34px; }
+.input-clear-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 2px; display: flex; align-items: center; justify-content: center; }
+.input-clear-btn:hover span { color: #333 !important; }
+.preset-search-btn { padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.or-between { font-size: 11px; font-weight: 700; color: var(--text-muted); padding: 2px 0 2px 4px; }
 .search-all-btn { width: 100%; padding: 10px; background: var(--green); color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; }
-.search-all-btn:hover { background: var(--green-dark); }
 .section-divider { height: 1px; background: var(--border); margin: 2px 0; }
-.direct-search-row { display: flex; gap: 8px; }
-.direct-search-row input { flex: 1; }
+.direct-row { display: flex; gap: 8px; }
+.direct-row input { flex: 1; }
 .option-group { display: flex; flex-direction: column; gap: 4px; }
-.option-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
 .pill-group { display: flex; flex-wrap: wrap; gap: 4px; }
 .pill { padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; }
-.pill:hover { border-color: var(--green); color: var(--green); }
 .pill.active { background: var(--green); border-color: var(--green); color: white; font-weight: 700; }
 .date-range { display: none; flex-direction: column; gap: 6px; background: #fafafa; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; margin-top: 2px; }
 .date-range.open { display: flex; }
@@ -63,47 +62,76 @@ body { font-family: -apple-system, 'Noto Sans KR', sans-serif; background: var(-
 input[type="text"], input[type="date"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; color: var(--text); background: var(--surface); outline: none; transition: border 0.15s; -webkit-appearance: none; }
 input:focus { border-color: var(--green); }
 input[type="date"] { font-size: 12px; }
-.list-header { display: none; align-items: center; justify-content: space-between; padding: 8px 16px; background: #fafafa; border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 90; }
+.list-header { display: none; align-items: center; justify-content: space-between; padding: 8px 16px; background: #fafafa; border-bottom: 1px solid var(--border); position: sticky; top: 96px; z-index: 90; }
 .list-header.visible { display: flex; }
 .list-meta { display: flex; align-items: center; gap: 8px; }
 .count-badge { background: var(--green); color: white; font-size: 11px; font-weight: 700; border-radius: 20px; padding: 2px 9px; }
 .selected-count { font-size: 12px; color: var(--text-muted); }
-.select-all-btn { font-size: 12px; color: var(--green-dark); font-weight: 700; background: none; border: none; cursor: pointer; padding: 4px; }
+.select-all-btn { font-size: 12px; color: var(--green); font-weight: 700; background: none; border: none; cursor: pointer; padding: 4px; }
 .article-list { padding-bottom: 80px; }
-.article-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #f0f0f0; background: var(--surface); cursor: pointer; transition: background 0.1s; }
+.article-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #f0f0f0; background: var(--surface); cursor: pointer; }
 .article-item:active { background: #f5f5f5; }
-.article-item.active { background: var(--green-light); border-left: 3px solid var(--green); padding-left: 13px; }
 .article-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; accent-color: var(--green); cursor: pointer; }
 .article-info { flex: 1; min-width: 0; }
 .article-title { font-size: 14px; font-weight: 500; line-height: 1.5; margin-bottom: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.article-meta { display: flex; align-items: center; gap: 6px; }
+.article-source { font-size: 11px; color: var(--green); font-weight: 600; }
 .article-date { font-size: 11px; color: var(--text-muted); }
 .article-share-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px 4px; flex-shrink: 0; opacity: 0.6; }
-.article-share-btn:hover { opacity: 1; }
-.article-arrow { color: var(--text-muted); font-size: 16px; margin-top: 2px; flex-shrink: 0; }
 .copy-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px; z-index: 100; }
 .btn-copy { width: 100%; padding: 12px; background: #1a1a1a; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; }
-.btn-copy:hover { background: #333; }
 .btn-copy:disabled { background: #ccc; cursor: not-allowed; }
-.modal-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.4); }
-.modal-overlay.open { display: block; }
-.modal { position: fixed; bottom: 0; left: 0; right: 0; height: 88vh; background: var(--surface); border-radius: 20px 20px 0 0; display: none; flex-direction: column; z-index: 201; }
-.modal.open { display: flex; animation: slideUp 0.25s ease-out; }
-@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.modal-handle { width: 36px; height: 4px; border-radius: 2px; background: #ddd; margin: 10px auto 6px; flex-shrink: 0; }
-.modal-header { padding: 0 16px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.modal-title { font-size: 15px; font-weight: 700; line-height: 1.4; margin-bottom: 6px; }
-.modal-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.modal-date { font-size: 12px; color: var(--text-muted); }
-.modal-open-btn { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px; background: none; font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; }
-.modal-open-btn:hover { border-color: var(--green); color: var(--green); }
-.modal-body { flex: 1; overflow: hidden; position: relative; }
-.modal-body iframe { width: 100%; height: 100%; border: none; }
-.modal-blocked { display: none; position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 32px; background: var(--bg); }
-.modal-blocked.show { display: flex; }
-.modal-blocked .icon { font-size: 40px; }
-.modal-blocked h3 { font-size: 15px; font-weight: 700; }
-.modal-blocked p { font-size: 13px; color: var(--text-sub); line-height: 1.6; }
-.blocked-url { background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px; font-size: 11px; color: var(--text-sub); word-break: break-all; width: 100%; cursor: pointer; }
+
+/* 설정 화면 */
+.settings-screen { padding-bottom: 40px; }
+.settings-section-title { padding: 16px 16px 6px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; }
+.api-box { background: var(--green-light); border: 1px solid #c3ecd6; border-radius: var(--radius-sm); margin: 0 16px 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+.api-header { display: flex; align-items: center; justify-content: space-between; }
+.api-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-sub); }
+.api-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+.api-dot.active { background: var(--green); }
+.api-reauth-btn { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); background: white; font-size: 11px; color: var(--text-sub); cursor: pointer; }
+.api-fields { display: none; flex-direction: column; gap: 6px; }
+.api-fields.open { display: flex; }
+.api-field-row { display: flex; align-items: center; gap: 8px; }
+.api-field-row span { font-size: 11px; color: var(--text-sub); min-width: 50px; }
+.green-btn { padding: 7px; border-radius: var(--radius-sm); background: var(--green); color: white; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
+.gray-btn { padding: 7px; border-radius: var(--radius-sm); background: #999; color: white; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
+.group-list-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+.group-list-item:active { background: #f5f5f5; }
+.group-color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.group-list-name { font-size: 14px; color: var(--text); }
+.group-list-sub { font-size: 11px; color: var(--text-muted); margin-left: 6px; }
+.group-list-arrow { font-size: 16px; color: var(--text-muted); margin-left: auto; }
+.site-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.site-check { width: 18px; height: 18px; accent-color: var(--green); flex-shrink: 0; }
+.site-info { flex: 1; min-width: 0; }
+.site-name { font-size: 14px; color: var(--text); }
+.site-url { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.site-del-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 18px; }
+.site-search-row { display: flex; gap: 8px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.site-search-row input { flex: 1; }
+.site-results { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin: 0 16px 8px; overflow: hidden; display: none; }
+.site-results.open { display: block; }
+.site-result-header { padding: 8px 14px; font-size: 11px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.site-result-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #f5f5f5; }
+.site-result-item:last-child { border-bottom: none; }
+.site-result-name { font-size: 13px; color: var(--text); }
+.site-result-url { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.site-add-btn { padding: 4px 12px; background: var(--green); color: white; border: none; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+/* 편집 화면 */
+.edit-screen { display: none; }
+.edit-screen.active { display: block; }
+.edit-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 90; }
+.back-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-sub); padding: 0 4px; }
+.edit-title { font-size: 15px; font-weight: 700; flex: 1; }
+.edit-save-btn { padding: 6px 16px; background: var(--green); color: white; border: none; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.edit-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.group-name-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; color: var(--text); background: var(--surface); outline: none; }
+.group-name-input:focus { border-color: var(--green); }
+
+/* STATES */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 60px 32px; text-align: center; color: var(--text-muted); }
 .empty-state .icon { font-size: 48px; }
 .empty-state h3 { font-size: 15px; font-weight: 600; color: var(--text-sub); }
@@ -114,6 +142,8 @@ input[type="date"] { font-size: 12px; }
 .no-results { padding: 48px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
 .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(10px); background: #1a1a1a; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; transition: all 0.25s; pointer-events: none; z-index: 999; white-space: nowrap; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.display-custom-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.display-custom-row input { width: 120px !important; }
 </style>
 </head>
 <body>
@@ -123,179 +153,375 @@ input[type="date"] { font-size: 12px; }
   <span class="logo-sub">뉴스 수집기</span>
 </div>
 
-<div class="search-panel">
-  <div>
-    <div class="api-row-compact">
-      <span class="api-dot" id="apiDot"></span>
-      <span>🔑 API 인증</span>
+<div class="tab-bar">
+  <div class="tab active" id="tab-search" onclick="switchTab('search')">🔍 검색(기사)</div>
+  <div class="tab" id="tab-fss" onclick="switchTab('fss')">🏛 금융감독원</div>
+  <div class="tab" id="tab-settings" onclick="switchTab('settings')">⚙️ 설정</div>
+</div>
+
+<!-- 검색 화면 -->
+<div class="screen active" id="screen-search">
+  <div class="search-panel">
+    <div>
+      <div class="section-label" style="margin-bottom:6px">검색 즐겨찾기</div>
+      <div class="group-tabs" id="groupTabs"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px" id="keywordRows"></div>
+    <div class="section-divider"></div>
+    <div class="direct-row">
+      <input type="text" id="keyword" placeholder="직접 검색..." autocomplete="new-password" onkeydown="if(event.key==='Enter') doDirectSearch()">
+      <button style="padding:8px 14px;background:var(--green);color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="doDirectSearch()">검색</button>
+    </div>
+    <div class="option-group">
+      <div class="section-label">정렬</div>
+      <div class="pill-group" id="sortGroup">
+        <button class="pill" data-val="date" onclick="selectSort(this)">최신순</button>
+        <button class="pill" data-val="sim" onclick="selectSort(this)">관련도순</button>
+      </div>
+    </div>
+    <div class="option-group">
+      <div class="section-label">기간</div>
+      <div class="pill-group" id="periodGroup">
+        <button class="pill" data-val="all" onclick="selectPeriod(this)">전체</button>
+        <button class="pill" data-val="1h" onclick="selectPeriod(this)">1시간</button>
+        <button class="pill" data-val="1d" onclick="selectPeriod(this)">1일</button>
+        <button class="pill" data-val="1w" onclick="selectPeriod(this)">1주</button>
+        <button class="pill" data-val="1m" onclick="selectPeriod(this)">1개월</button>
+        <button class="pill" data-val="3m" onclick="selectPeriod(this)">3개월</button>
+        <button class="pill" data-val="custom" onclick="selectPeriod(this)">직접입력</button>
+      </div>
+      <div class="date-range" id="dateRange">
+        <div class="date-range-row">
+          <input type="date" id="startDate">
+          <span>~</span>
+          <input type="date" id="endDate">
+        </div>
+      </div>
+    </div>
+    <div class="option-group">
+      <div class="section-label">최대 검색량</div>
+      <div class="pill-group" id="displayGroup">
+        <button class="pill" data-val="0" onclick="selectDisplay(this)">전체</button>
+        <button class="pill" data-val="20" onclick="selectDisplay(this)">20개</button>
+        <button class="pill" data-val="50" onclick="selectDisplay(this)">50개</button>
+        <button class="pill" data-val="100" onclick="selectDisplay(this)">100개</button>
+        <button class="pill display-custom-btn" data-val="custom" onclick="selectDisplay(this)">직접입력</button>
+      </div>
+      <div class="display-custom-row" id="displayCustomRow" style="display:none;">
+        <input type="number" id="displayCustomVal" min="1" max="1000" placeholder="숫자 입력" style="width:120px;" oninput="saveDisplayVal()">
+        <span style="font-size:12px;color:var(--text-muted);">개 (최대 1000)</span>
+      </div>
+    </div>
+    <div id="errorMsg" class="error-box" style="display:none;"></div>
+  </div>
+
+  <div class="list-header" id="listHeader">
+    <div class="list-meta">
+      <span class="count-badge" id="articleCount">0</span>
+      <span class="selected-count" id="selectedCount">0개 선택</span>
+    </div>
+    <button class="select-all-btn" onclick="toggleSelectAll()">전체선택</button>
+  </div>
+
+  <div class="article-list" id="articleList">
+    <div class="empty-state">
+      <div class="icon">📰</div>
+      <h3>뉴스를 검색해보세요</h3>
+      <p>즐겨찾기 키워드를 설정하거나<br>직접 검색어를 입력해주세요.</p>
+    </div>
+  </div>
+
+  <div class="copy-bar">
+    <button class="btn-copy" id="copyBtn" onclick="copyUrls()" disabled>URL 복사 (0개)</button>
+  </div>
+</div>
+
+<!-- 금융감독원 화면 -->
+<div class="screen" id="screen-fss">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:80px 32px;text-align:center;">
+    <div style="font-size:56px;">🏛</div>
+    <h3 style="font-size:17px;font-weight:700;color:var(--text);">금융감독원 공시 검색</h3>
+    <p style="font-size:14px;color:var(--text-sub);line-height:1.7;">현재 개발 중입니다.<br>기사 검색 기능 완성 후 순차 개발 예정이에요.</p>
+    <div style="background:var(--green-light);border:1px solid #c3ecd6;border-radius:var(--radius-sm);padding:12px 20px;font-size:12px;color:#02a84b;font-weight:600;">🚧 Coming Soon</div>
+  </div>
+</div>
+
+<!-- 설정 화면 -->
+<div class="screen settings-screen" id="screen-settings">
+  <div class="settings-section-title">🔑 API 인증</div>
+  <div class="api-box">
+    <div class="api-header">
+      <div class="api-status">
+        <span class="api-dot" id="apiDot"></span>
+        <span id="apiStatusText">API 키 미입력</span>
+      </div>
       <button class="api-reauth-btn" onclick="toggleApiFields()">재인증</button>
     </div>
     <div class="api-fields" id="apiFields">
       <div class="api-field-row">
         <span>Client ID</span>
-        <input type="text" id="clientId" placeholder="Client ID 입력" autocomplete="off">
+        <input type="text" id="clientId" placeholder="Client ID 입력" autocomplete="new-password">
       </div>
       <div class="api-field-row">
         <span>Secret</span>
-        <input type="text" id="clientSecret" placeholder="Client Secret 입력" autocomplete="off">
+        <input type="text" id="clientSecret" placeholder="Client Secret 입력" autocomplete="new-password">
       </div>
       <div style="display:flex;gap:6px;">
-        <button class="api-save-btn" onclick="saveApiKeys()" style="flex:1;">저장</button>
-        <button class="api-save-btn" onclick="cancelApiFields()" style="flex:1;background:#999;">취소</button>
+        <button class="green-btn" onclick="saveApiKeys()" style="flex:1;">저장</button>
+        <button class="gray-btn" onclick="cancelApiFields()" style="flex:1;">취소</button>
       </div>
     </div>
   </div>
 
-  <div class="preset-section">
-    <div class="preset-label">⭐ 즐겨찾기 키워드</div>
-    <div class="preset-row">
-      <span class="paren">(</span>
-      <input type="text" class="preset-input" id="p0a" placeholder="키워드1" oninput="savePresets()">
-      <select class="op-select" id="op0" onchange="savePresets()"><option value="AND">AND</option><option value="OR">OR</option></select>
-      <input type="text" class="preset-input" id="p0b" placeholder="키워드2" oninput="savePresets()">
-      <span class="paren">)</span>
-      <button class="preset-search-btn" onclick="searchPreset(0)">🔍</button>
-    </div>
-    <div class="or-row">
-      <select class="row-op-select" id="rowop0" onchange="savePresets()"><option value="OR">OR</option><option value="AND">AND</option></select>
-    </div>
-    <div class="preset-row">
-      <span class="paren">(</span>
-      <input type="text" class="preset-input" id="p1a" placeholder="키워드3" oninput="savePresets()">
-      <select class="op-select" id="op1" onchange="savePresets()"><option value="AND">AND</option><option value="OR">OR</option></select>
-      <input type="text" class="preset-input" id="p1b" placeholder="키워드4" oninput="savePresets()">
-      <span class="paren">)</span>
-      <button class="preset-search-btn" onclick="searchPreset(1)">🔍</button>
-    </div>
-    <div class="or-row">
-      <select class="row-op-select" id="rowop1" onchange="savePresets()"><option value="OR">OR</option><option value="AND">AND</option></select>
-    </div>
-    <div class="preset-row">
-      <span class="paren">(</span>
-      <input type="text" class="preset-input" id="p2a" placeholder="키워드5" oninput="savePresets()">
-      <select class="op-select" id="op2" onchange="savePresets()"><option value="AND">AND</option><option value="OR">OR</option></select>
-      <input type="text" class="preset-input" id="p2b" placeholder="키워드6" oninput="savePresets()">
-      <span class="paren">)</span>
-      <button class="preset-search-btn" onclick="searchPreset(2)">🔍</button>
-    </div>
-    <button class="search-all-btn" onclick="searchAll()">즐겨찾기 전체 검색</button>
+  <div class="settings-section-title">⭐ 검색 즐겨찾기</div>
+  <div id="groupSettingsList"></div>
+
+  <div class="settings-section-title" style="margin-top:8px;padding-top:16px;border-top:4px solid var(--bg);">🌐 검색 사이트</div>
+  <div id="siteList"></div>
+
+  <!-- 추가 방법 탭 -->
+  <div style="display:flex;border-bottom:1px solid var(--border);background:var(--surface);margin-top:4px;">
+    <div id="siteTab1" onclick="switchSiteTab(1)" style="flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer;">🔍 이름으로 검색</div>
+    <div id="siteTab2" onclick="switchSiteTab(2)" style="flex:1;padding:10px;text-align:center;font-size:13px;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;">✏️ 직접 입력</div>
   </div>
 
-  <div class="section-divider"></div>
-
-  <div class="direct-search-row">
-    <input type="text" id="keyword" placeholder="직접 검색..." autocomplete="off" onkeydown="if(event.key==='Enter') doDirectSearch()">
-    <button style="padding:8px 14px;background:var(--green);color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="doDirectSearch()">검색</button>
-  </div>
-
-  <div class="option-group">
-    <div class="option-label">정렬</div>
-    <div class="pill-group" id="sortGroup">
-      <button class="pill" data-val="date" onclick="selectSort(this)">최신순</button>
-      <button class="pill" data-val="sim" onclick="selectSort(this)">관련도순</button>
+  <!-- 이름 검색 -->
+  <div id="siteSearchPanel">
+    <div class="site-search-row">
+      <input type="text" id="siteSearchInput" placeholder="신문사 이름 검색... (예: 보험저널)" autocomplete="new-password" onkeydown="if(event.key==='Enter') searchSite()">
+      <button class="green-btn" style="white-space:nowrap;padding:8px 14px;" onclick="searchSite()">검색</button>
     </div>
+    <div class="site-results" id="siteResults"></div>
   </div>
 
-  <div class="option-group">
-    <div class="option-label">기간</div>
-    <div class="pill-group" id="periodGroup">
-      <button class="pill" data-val="all" onclick="selectPeriod(this)">전체</button>
-      <button class="pill" data-val="1h" onclick="selectPeriod(this)">1시간</button>
-      <button class="pill" data-val="1d" onclick="selectPeriod(this)">1일</button>
-      <button class="pill" data-val="1w" onclick="selectPeriod(this)">1주</button>
-      <button class="pill" data-val="1m" onclick="selectPeriod(this)">1개월</button>
-      <button class="pill" data-val="3m" onclick="selectPeriod(this)">3개월</button>
-      <button class="pill" data-val="custom" onclick="selectPeriod(this)">직접입력</button>
+  <!-- 직접 입력 -->
+  <div id="siteDirectPanel" style="display:none;">
+    <div class="site-search-row">
+      <input type="text" id="siteDirectName" placeholder="신문사 이름 (예: 보험저널)" autocomplete="new-password">
     </div>
-    <div class="date-range" id="dateRange">
-      <div class="date-range-row">
-        <input type="date" id="startDate">
-        <span>~</span>
-        <input type="date" id="endDate">
-      </div>
+    <div class="site-search-row" style="padding-top:0;">
+      <input type="text" id="siteDirectUrl" placeholder="홈페이지 주소 (예: https://insjournal.co.kr)" autocomplete="new-password">
+      <button class="green-btn" style="white-space:nowrap;padding:8px 14px;" onclick="addSiteDirect()">추가</button>
     </div>
-  </div>
-
-  <div id="errorMsg" class="error-box" style="display:none;"></div>
-</div>
-
-<div class="list-header" id="listHeader">
-  <div class="list-meta">
-    <span class="count-badge" id="articleCount">0</span>
-    <span class="selected-count" id="selectedCount">0개 선택</span>
-  </div>
-  <button class="select-all-btn" onclick="toggleSelectAll()">전체선택</button>
-</div>
-
-<div class="article-list" id="articleList">
-  <div class="empty-state">
-    <div class="icon">📰</div>
-    <h3>뉴스를 검색해보세요</h3>
-    <p>즐겨찾기 키워드를 설정하거나<br>직접 검색어를 입력해주세요.</p>
   </div>
 </div>
 
-<div class="copy-bar">
-  <button class="btn-copy" id="copyBtn" onclick="copyUrls()" disabled>URL 복사 (0개)</button>
-</div>
-
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
-<div class="modal" id="modal">
-  <div class="modal-handle"></div>
-  <div class="modal-header">
-    <div class="modal-title" id="modalTitle"></div>
-    <div class="modal-meta">
-      <span class="modal-date" id="modalDate"></span>
-      <button class="modal-open-btn" id="modalOpenBtn">🔗 새 탭으로 열기</button>
-    </div>
+<!-- 편집 화면 -->
+<div class="edit-screen" id="screen-edit">
+  <div class="edit-header">
+    <button class="back-btn" onclick="closeEdit()">←</button>
+    <span class="edit-title" id="editTitle">그룹 편집</span>
+    <button class="edit-save-btn" onclick="saveEdit()">저장</button>
   </div>
-  <div class="modal-body">
-    <iframe id="articleFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" title="기사 본문"></iframe>
-    <div class="modal-blocked" id="modalBlocked">
-      <div class="icon">🔒</div>
-      <h3>미리보기가 차단되었습니다</h3>
-      <p>이 언론사는 보안 정책으로<br>직접 표시가 불가능해요.</p>
-      <div class="blocked-url" id="blockedUrl" onclick="openCurrent()"></div>
-      <button style="width:100%;margin-top:4px;padding:10px;background:var(--green);color:white;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;" onclick="openCurrent()">새 탭으로 열기</button>
-    </div>
+  <div class="edit-body">
+    <input type="text" class="group-name-input" id="editGroupName" placeholder="그룹 이름 입력...">
+    <div id="editKeywordRows"></div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
+// 지우개 SVG
+const ERASER_SVG = `<span style="font-size:14px;color:#999;line-height:1;">✕</span>`;
+
 let articles = [];
 let selectedIds = new Set();
-let activeId = null;
-let currentArticleUrl = '';
-let sortVal = 'date';
+let sortVal = 'sim';
 let periodVal = '1d';
+let displayVal = '0'; // '0'=전체, '20','50','100','custom'
+let currentGroupIdx = 0;
+let editingGroupIdx = -1;
+
+const GROUP_COLORS = ['#03C75A','#378ADD','#D85A30','#9B59B6','#E67E22'];
+
+const DEFAULT_GROUPS = Array.from({length:5}, (_,i) => ({
+  name: `그룹 ${i+1}`,
+  keywords: ['','','','','','','',''],
+  ops: ['OR','OR','OR','OR'],
+  rowops: ['OR','OR','OR']
+}));
 
 (function init() {
   const id = localStorage.getItem('naver_client_id') || '';
   const secret = localStorage.getItem('naver_client_secret') || '';
-  if (id && secret) document.getElementById('apiDot').classList.add('active');
-
-  const presets = JSON.parse(localStorage.getItem('naver_presets2') || 'null') || [];
-  [0,1,2].forEach(i => {
-    const p = presets[i] || {};
-    const ea = document.getElementById(`p${i}a`); if (ea) ea.value = p.a || '';
-    const eb = document.getElementById(`p${i}b`); if (eb) eb.value = p.b || '';
-    const eop = document.getElementById(`op${i}`); if (eop) eop.value = p.op || 'AND';
-    if (i < 2) { const erow = document.getElementById(`rowop${i}`); if (erow) erow.value = p.rowop || 'OR'; }
-  });
-
-  sortVal = localStorage.getItem('naver_sort') || 'date';
+  if (id && secret) {
+    document.getElementById('apiDot').classList.add('active');
+    document.getElementById('apiStatusText').textContent = 'API 연결됨';
+  } else {
+    document.getElementById('apiFields').classList.add('open');
+  }
+  sortVal = localStorage.getItem('naver_sort') || 'sim';
   document.querySelectorAll('#sortGroup .pill').forEach(p => { if (p.dataset.val === sortVal) p.classList.add('active'); });
-
   periodVal = localStorage.getItem('naver_period') || '1d';
   document.querySelectorAll('#periodGroup .pill').forEach(p => { if (p.dataset.val === periodVal) p.classList.add('active'); });
   if (periodVal === 'custom') document.getElementById('dateRange').classList.add('open');
-
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('endDate').value = localStorage.getItem('naver_end') || today;
   document.getElementById('startDate').value = localStorage.getItem('naver_start') || today;
+  displayVal = localStorage.getItem('naver_display') || '0';
+  document.querySelectorAll('#displayGroup .pill').forEach(p => { if (p.dataset.val === displayVal) p.classList.add('active'); });
+  if (displayVal === 'custom') {
+    document.getElementById('displayCustomRow').style.display = 'flex';
+    document.getElementById('displayCustomVal').value = localStorage.getItem('naver_display_custom') || '100';
+  }
+  renderGroupTabs();
+  renderKeywordRows();
+  renderGroupSettingsList();
+  renderSites();
 })();
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  ['search','settings','edit','fss'].forEach(s => {
+    const el = document.getElementById('screen-'+s);
+    if (el) el.classList.remove('active');
+  });
+  document.getElementById('tab-'+tab)?.classList.add('active');
+  document.getElementById('screen-'+tab)?.classList.add('active');
+}
+
+function getGroups() {
+  return JSON.parse(localStorage.getItem('naver_groups_v3') || 'null') || DEFAULT_GROUPS;
+}
+function saveGroups(g) { localStorage.setItem('naver_groups_v3', JSON.stringify(g)); }
+
+function renderGroupTabs() {
+  const groups = getGroups();
+  document.getElementById('groupTabs').innerHTML = groups.map((g,i) =>
+    `<div class="group-tab ${i===currentGroupIdx?'active':''}" onclick="selectGroup(${i})">${g.name}</div>`
+  ).join('');
+}
+
+function selectGroup(idx) {
+  currentGroupIdx = idx;
+  renderGroupTabs();
+  renderKeywordRows();
+}
+
+function renderKeywordRows() {
+  const g = getGroups()[currentGroupIdx];
+  const container = document.getElementById('keywordRows');
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    const ka = g.keywords[i*2] || '';
+    const kb = g.keywords[i*2+1] || '';
+    const op = g.ops[i] || 'OR';
+    const rowop = g.rowops?.[i] || 'OR';
+    html += `
+      <div class="preset-row">
+        <span class="paren">(</span>
+        <div class="input-wrap">
+          <input type="text" id="k${i}a" value="${ka.replace(/"/g,'&quot;')}" placeholder="키워드${i*2+1}" autocomplete="new-password">
+          <button class="input-clear-btn" onclick="clearInput('k${i}a')" title="지우기">${ERASER_SVG}</button>
+        </div>
+        <select class="op-select" id="kop${i}">
+          <option value="OR" ${op==='OR'?'selected':''}>OR</option>
+          <option value="AND" ${op==='AND'?'selected':''}>AND</option>
+        </select>
+        <div class="input-wrap">
+          <input type="text" id="k${i}b" value="${kb.replace(/"/g,'&quot;')}" placeholder="키워드${i*2+2}" autocomplete="new-password">
+          <button class="input-clear-btn" onclick="clearInput('k${i}b')" title="지우기">${ERASER_SVG}</button>
+        </div>
+        <span class="paren">)</span>
+        <button class="preset-search-btn" onclick="searchRow(${i})">🔍</button>
+      </div>
+      ${i < 3 ? `<div style="padding:2px 0 2px 4px;"><select class="row-op-select" id="krowop${i}"><option value="OR" ${rowop==='OR'?'selected':''}>OR</option><option value="AND" ${rowop==='AND'?'selected':''}>AND</option></select></div>` : ''}`;
+  }
+  html += `<button class="search-all-btn" onclick="searchAll()">즐겨찾기 전체 검색</button>`;
+  container.innerHTML = html;
+}
+
+function clearInput(id) {
+  const el = document.getElementById(id);
+  if (el) { el.value = ''; el.focus(); }
+}
+
+function renderGroupSettingsList() {
+  const groups = getGroups();
+  document.getElementById('groupSettingsList').innerHTML = groups.map((g,i) => {
+    const count = g.keywords.filter(k=>k.trim()).length;
+    return `
+      <div class="group-list-item" onclick="openEdit(${i})">
+        <div class="group-color-dot" style="background:${GROUP_COLORS[i%GROUP_COLORS.length]}"></div>
+        <div class="group-list-name">${g.name}</div>
+        <span class="group-list-sub">키워드 ${count}개</span>
+        <span class="group-list-arrow">›</span>
+      </div>`;
+  }).join('');
+}
+
+function openEdit(idx) {
+  editingGroupIdx = idx;
+  const g = getGroups()[idx];
+  document.getElementById('editGroupName').value = g.name;
+  document.getElementById('editTitle').textContent = g.name;
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    const ka = g.keywords[i*2] || '';
+    const kb = g.keywords[i*2+1] || '';
+    const op = g.ops[i] || 'OR';
+    html += `
+      <div class="preset-row">
+        <span class="paren">(</span>
+        <div class="input-wrap">
+          <input type="text" id="ek${i}a" value="${ka.replace(/"/g,'&quot;')}" placeholder="키워드${i*2+1}" autocomplete="new-password">
+          <button class="input-clear-btn" onclick="clearInput('ek${i}a')" title="지우기">${ERASER_SVG}</button>
+        </div>
+        <select class="op-select" id="ekop${i}">
+          <option value="OR" ${op==='OR'?'selected':''}>OR</option>
+          <option value="AND" ${op==='AND'?'selected':''}>AND</option>
+        </select>
+        <div class="input-wrap">
+          <input type="text" id="ek${i}b" value="${kb.replace(/"/g,'&quot;')}" placeholder="키워드${i*2+2}" autocomplete="new-password">
+          <button class="input-clear-btn" onclick="clearInput('ek${i}b')" title="지우기">${ERASER_SVG}</button>
+        </div>
+        <span class="paren">)</span>
+      </div>
+      ${i < 3 ? `<div style="padding:2px 0 2px 4px;"><select class="row-op-select" id="ekrowop${i}"><option value="OR" ${(g.rowops?.[i]||'OR')==='OR'?'selected':''}>OR</option><option value="AND" ${(g.rowops?.[i]||'OR')==='AND'?'selected':''}>AND</option></select></div>` : ''}`;
+  }
+  html += `<button onclick="resetKeywords()" style="width:100%;margin-top:8px;padding:10px;background:#fff3f3;color:#c62828;border:1px solid #ffcdd2;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;">🗑 그룹${idx+1} 초기화</button>`;
+  document.getElementById('editKeywordRows').innerHTML = html;
+  document.getElementById('screen-settings').classList.remove('active');
+  document.getElementById('screen-edit').classList.add('active');
+}
+
+function closeEdit() {
+  document.getElementById('screen-edit').classList.remove('active');
+  document.getElementById('screen-settings').classList.add('active');
+  renderGroupSettingsList();
+  renderGroupTabs();
+  renderKeywordRows();
+}
+
+function resetKeywords() {
+  if (!confirm('이 그룹의 키워드를 초기화할까요?')) return;
+  const nameEl = document.getElementById('editGroupName');
+  if (nameEl) nameEl.value = `그룹 ${editingGroupIdx+1}`;
+  for (let i = 0; i < 4; i++) {
+    const a = document.getElementById(`ek${i}a`); if (a) a.value = '';
+    const b = document.getElementById(`ek${i}b`); if (b) b.value = '';
+    const op = document.getElementById(`ekop${i}`); if (op) op.value = 'OR';
+    const rowop = document.getElementById(`ekrowop${i}`); if (rowop) rowop.value = 'OR';
+  }
+  showToast('초기화됐어요.');
+}
+
+function saveEdit() {
+  const groups = getGroups();
+  const g = groups[editingGroupIdx];
+  g.name = document.getElementById('editGroupName').value.trim() || g.name;
+  g.rowops = g.rowops || ['OR','OR','OR'];
+  for (let i = 0; i < 4; i++) {
+    g.keywords[i*2] = document.getElementById(`ek${i}a`)?.value || '';
+    g.keywords[i*2+1] = document.getElementById(`ek${i}b`)?.value || '';
+    g.ops[i] = document.getElementById(`ekop${i}`)?.value || 'OR';
+    if (i < 3) g.rowops[i] = document.getElementById(`ekrowop${i}`)?.value || 'OR';
+  }
+  saveGroups(groups);
+  showToast('✅ 저장됐어요.');
+  closeEdit();
+}
 
 function toggleApiFields() { document.getElementById('apiFields').classList.toggle('open'); }
 function cancelApiFields() {
@@ -310,40 +536,121 @@ function saveApiKeys() {
   localStorage.setItem('naver_client_id', id);
   localStorage.setItem('naver_client_secret', secret);
   document.getElementById('apiDot').classList.add('active');
+  document.getElementById('apiStatusText').textContent = 'API 연결됨';
   document.getElementById('apiFields').classList.remove('open');
   showToast('✅ API 키가 저장되었습니다.');
 }
 
-function savePresets() {
-  const presets = [0,1,2].map(i => ({
-    a: document.getElementById(`p${i}a`).value,
-    b: document.getElementById(`p${i}b`).value,
-    op: document.getElementById(`op${i}`).value,
-    rowop: i < 2 ? document.getElementById(`rowop${i}`).value : 'OR'
-  }));
-  localStorage.setItem('naver_presets2', JSON.stringify(presets));
+function getSites() {
+  return JSON.parse(localStorage.getItem('naver_sites') || 'null') || [];
+}
+function saveSites(s) { localStorage.setItem('naver_sites', JSON.stringify(s)); }
+
+function renderSites() {
+  document.getElementById('siteList').innerHTML = getSites().map((s,i) => `
+    <div class="site-item">
+      <input type="checkbox" class="site-check" ${s.enabled?'checked':''} onchange="toggleSite(${i})">
+      <div class="site-info">
+        <div class="site-name">${s.name}</div>
+        <div class="site-url">${s.domain||s.url}</div>
+      </div>
+      ${s.fixed?'':`<button class="site-del-btn" onclick="deleteSite(${i})">🗑</button>`}
+    </div>`).join('');
 }
 
-function buildQueries(row) {
-  const a = document.getElementById(`p${row}a`).value.trim();
-  const b = document.getElementById(`p${row}b`).value.trim();
-  const op = document.getElementById(`op${row}`).value;
-  if (!a && !b) return [];
+function toggleSite(i) { const s=getSites(); s[i].enabled=!s[i].enabled; saveSites(s); }
+function deleteSite(i) { const s=getSites(); s.splice(i,1); saveSites(s); renderSites(); showToast('삭제됐어요.'); }
+
+async function searchSite() {
+  const query = document.getElementById('siteSearchInput').value.trim();
+  if (!query) { showToast('신문사 이름을 입력해주세요.'); return; }
+  const clientId = localStorage.getItem('naver_client_id')||'';
+  const clientSecret = localStorage.getItem('naver_client_secret')||'';
+  if (!clientId||!clientSecret) { showToast('API 키를 먼저 저장해주세요.'); return; }
+  showToast('검색 중...');
+  try {
+    const params = new URLSearchParams({query:`${query} 신문 홈페이지`,display:5,start:1,clientId,clientSecret});
+    const res = await fetch(`/.netlify/functions/news?${params}&type=web`);
+    const data = await res.json();
+    const items = (data.items||[]).slice(0,3);
+    const el = document.getElementById('siteResults');
+    if (!items.length) { el.innerHTML=`<div class="site-result-header">검색 결과가 없어요.</div>`; el.classList.add('open'); return; }
+    el.innerHTML = `<div class="site-result-header">"${query}" 검색 결과 — 맞는 사이트를 선택해주세요</div>`
+      + items.map(item => {
+        const url = item.link||'';
+        const domain = url.replace(/https?:\/\//,'').split('/')[0];
+        const name = (item.title||'').replace(/<[^>]*>/g,'');
+        return `<div class="site-result-item">
+          <div><div class="site-result-name">${name}</div><div class="site-result-url">${domain}</div></div>
+          <button class="site-add-btn" onclick="addSite('${name.replace(/'/g,"\\'")}','${url.replace(/'/g,"\\'")}')">추가</button>
+        </div>`;
+      }).join('');
+    el.classList.add('open');
+  } catch(e) { showToast('검색 중 오류가 발생했어요.'); }
+}
+
+function switchSiteTab(tab) {
+  document.getElementById('siteSearchPanel').style.display = tab===1 ? 'block' : 'none';
+  document.getElementById('siteDirectPanel').style.display = tab===2 ? 'block' : 'none';
+  document.getElementById('siteTab1').style.cssText = tab===1
+    ? 'flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer;'
+    : 'flex:1;padding:10px;text-align:center;font-size:13px;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;';
+  document.getElementById('siteTab2').style.cssText = tab===2
+    ? 'flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer;'
+    : 'flex:1;padding:10px;text-align:center;font-size:13px;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;';
+}
+
+function addSiteDirect() {
+  const name = document.getElementById('siteDirectName').value.trim();
+  const url = document.getElementById('siteDirectUrl').value.trim();
+  if (!name) { showToast('신문사 이름을 입력해주세요.'); return; }
+  if (!url) { showToast('홈페이지 주소를 입력해주세요.'); return; }
+  const domain = url.replace(/https?:\/\//,'').split('/')[0];
+  if (!domain) { showToast('올바른 URL을 입력해주세요.'); return; }
+  if (domain.includes('naver.com')||domain.includes('google.com')) { showToast('이 사이트는 추가할 수 없어요.'); return; }
+  const sites = getSites();
+  if (sites.find(s=>s.domain===domain||s.url===url)) { showToast('이미 추가된 사이트예요.'); return; }
+  sites.push({name, url, domain, enabled:true, fixed:false});
+  saveSites(sites); renderSites();
+  document.getElementById('siteDirectName').value='';
+  document.getElementById('siteDirectUrl').value='';
+  showToast(`✅ "${name}" 추가됐어요.`);
+}
+function addSite(name, url) {
+  const domain = url.replace(/https?:\/\//,'').split('/')[0];
+  if (domain.includes('naver.com')||domain.includes('google.com')) { showToast('이 사이트는 추가할 수 없어요.'); return; }
+  const sites = getSites();
+  if (sites.find(s=>s.url===url||s.domain===domain)) { showToast('이미 추가된 사이트예요.'); return; }
+  sites.push({name, url, domain, enabled:true, fixed:false});
+  saveSites(sites); renderSites();
+  document.getElementById('siteResults').classList.remove('open');
+  document.getElementById('siteSearchInput').value='';
+  showToast(`✅ "${name}" 추가됐어요.`);
+}
+
+function buildRowQuery(i) {
+  const a = document.getElementById(`k${i}a`)?.value.trim()||'';
+  const b = document.getElementById(`k${i}b`)?.value.trim()||'';
+  const op = document.getElementById(`kop${i}`)?.value||'OR';
+  if (!a&&!b) return [];
   if (!a) return [b];
   if (!b) return [a];
-  if (op === 'AND') return [`${a} ${b}`];
-  return [a, b];
+  if (op==='AND') return [`${a} ${b}`];
+  return [a,b];
 }
 
-async function searchPreset(row) {
-  const queries = buildQueries(row);
-  if (!queries.length) { showToast('키워드를 입력해주세요.'); return; }
-  await runSearch(queries);
+async function searchRow(i) {
+  const q = buildRowQuery(i);
+  if (!q.length) { showToast('키워드를 입력해주세요.'); return; }
+  await runSearch(q);
 }
 
 async function searchAll() {
-  const queries = [];
-  [0,1,2].forEach(i => { buildQueries(i).forEach(q => { if (q && !queries.includes(q)) queries.push(q); }); });
+  const queries=[];
+  for (let i=0;i<4;i++) {
+    const rowQueries = buildRowQuery(i);
+    rowQueries.forEach(q=>{if(q&&!queries.includes(q))queries.push(q);});
+  }
   if (!queries.length) { showToast('키워드를 입력해주세요.'); return; }
   await runSearch(queries);
 }
@@ -355,136 +662,133 @@ async function doDirectSearch() {
 }
 
 async function runSearch(queries) {
-  const clientId = localStorage.getItem('naver_client_id') || '';
-  const clientSecret = localStorage.getItem('naver_client_secret') || '';
+  const clientId=localStorage.getItem('naver_client_id')||'';
+  const clientSecret=localStorage.getItem('naver_client_secret')||'';
   showError('');
-  if (!clientId || !clientSecret) {
-    document.getElementById('apiFields').classList.add('open');
-    return showError('API 키를 먼저 저장해주세요.');
-  }
-  selectedIds.clear(); activeId = null; articles = [];
+  if (!clientId||!clientSecret) { switchTab('settings'); return showToast('API 키를 먼저 저장해주세요.'); }
+  selectedIds.clear(); articles=[];
   updateCountUI();
   document.getElementById('listHeader').classList.remove('visible');
-  document.getElementById('articleList').innerHTML = `
-    <div style="background:white;">
-      ${Array(6).fill(`
-        <div style="display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f0f0;">
-          <div class="skeleton" style="width:18px;height:18px;flex-shrink:0;border-radius:3px;margin-top:2px;"></div>
-          <div style="flex:1;">
-            <div class="skeleton" style="height:38px;margin-bottom:8px;"></div>
-            <div class="skeleton" style="height:11px;width:40%;"></div>
-          </div>
-        </div>`).join('')}
-    </div>`;
+  document.getElementById('articleList').innerHTML=`<div style="background:white;">${Array(6).fill(`
+    <div style="display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f0f0;">
+      <div class="skeleton" style="width:18px;height:18px;flex-shrink:0;border-radius:3px;margin-top:2px;"></div>
+      <div style="flex:1;"><div class="skeleton" style="height:38px;margin-bottom:8px;"></div><div class="skeleton" style="height:11px;width:40%;"></div></div>
+    </div>`).join('')}</div>`;
   try {
-    const { start, end } = getDateRange();
-    const allItems = [];
-    const seenLinks = new Set();
+    const {start,end}=getDateRange();
+    const allItems=[]; const seenTitles=new Set();
+
+    // 활성화된 개별 사이트 목록 (naver fixed 제외)
+    const activeSites=getSites().filter(s=>s.enabled&&!s.fixed&&s.domain);
+    const sitesParam=activeSites.length?JSON.stringify(activeSites):null;
+
     for (const query of queries) {
-      const params = new URLSearchParams({ query, display: 100, start: 1, sort: sortVal, clientId, clientSecret });
-      const res = await fetch(`/.netlify/functions/news?${params}`);
-      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || `오류 ${res.status}`); }
-      const data = await res.json();
-      (data.items || []).forEach(item => {
-        const link = item.originallink || item.link;
-        if (!seenLinks.has(link)) { seenLinks.add(link); allItems.push(item); }
+      const params=new URLSearchParams({query,display:getDisplayCount(),start:1,sort:sortVal,clientId,clientSecret});
+      if (sitesParam) params.set('sites', sitesParam);
+      const res=await fetch(`/.netlify/functions/news?${params}`);
+      if (!res.ok) { const err=await res.json().catch(()=>({})); throw new Error(err.error||`오류 ${res.status}`); }
+      const data=await res.json();
+      (data.items||[]).forEach(item=>{
+        const title=stripHtml(item.title);
+        if (!seenTitles.has(title)) { seenTitles.add(title); allItems.push(item); }
       });
     }
-    articles = allItems
-      .filter(item => isInRange(item.pubDate, start, end))
-      .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
-      .map((item, i) => ({
-        id: i,
-        title: stripHtml(item.title),
-        link: item.originallink || item.link,
-        date: formatDate(item.pubDate),
+    articles=allItems
+      .filter(item=>isInRange(item.pubDate,start,end))
+      .sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate))
+      .map((item,i)=>({
+        id:i,
+        title:stripHtml(item.title),
+        link:item.originallink||item.link,
+        date:formatDate(item.pubDate),
+        source:item._source||'네이버뉴스'
       }));
     renderList();
   } catch(e) {
-    showError(e.message || '검색 중 오류가 발생했습니다.');
-    document.getElementById('articleList').innerHTML = `<div class="no-results">결과를 불러오지 못했습니다.</div>`;
+    showError(e.message||'검색 중 오류가 발생했습니다.');
+    document.getElementById('articleList').innerHTML=`<div class="no-results">결과를 불러오지 못했습니다.</div>`;
   }
 }
 
 function renderList() {
-  const list = document.getElementById('articleList');
-  const header = document.getElementById('listHeader');
-  if (!articles.length) {
-    list.innerHTML = `<div class="no-results">해당 기간에 기사가 없습니다.</div>`;
-    header.classList.remove('visible'); return;
-  }
+  const list=document.getElementById('articleList');
+  const header=document.getElementById('listHeader');
+  if (!articles.length) { list.innerHTML=`<div class="no-results">해당 기간에 기사가 없습니다.</div>`; header.classList.remove('visible'); return; }
   header.classList.add('visible');
-  document.getElementById('articleCount').textContent = articles.length;
+  document.getElementById('articleCount').textContent=articles.length;
   updateCountUI();
-  list.innerHTML = `<div style="background:white;">` + articles.map(a => `
-    <div class="article-item ${a.id === activeId ? 'active' : ''}" id="item-${a.id}" onclick="openModal(${a.id})">
-      <input type="checkbox" ${selectedIds.has(a.id) ? 'checked' : ''} onclick="event.stopPropagation();toggleCheck(${a.id})">
+  list.innerHTML=`<div style="background:white;">`+articles.map(a=>`
+    <div class="article-item" id="item-${a.id}" onclick="openArticle(${a.id})">
+      <input type="checkbox" ${selectedIds.has(a.id)?'checked':''} onclick="event.stopPropagation();toggleCheck(${a.id})">
       <div class="article-info">
         <div class="article-title">${a.title}</div>
-        <div class="article-date">${a.date}</div>
+        <div class="article-meta"><span class="article-source">${a.source}</span><span class="article-date">${a.date}</span></div>
       </div>
       <button class="article-share-btn" onclick="event.stopPropagation();shareOne(${a.id})">📤</button>
-      <span class="article-arrow">›</span>
-    </div>`).join('') + `</div>`;
+    </div>`).join('')+`</div>`;
 }
 
-function toggleCheck(id) {
-  if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
-  updateCountUI();
-}
+function openArticle(id) { window.open(articles[id].link,'_blank'); }
+function toggleCheck(id) { if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id); updateCountUI(); }
 function updateCountUI() {
-  const n = selectedIds.size;
-  document.getElementById('selectedCount').textContent = `${n}개 선택`;
-  const btn = document.getElementById('copyBtn');
-  btn.disabled = n === 0;
-  btn.textContent = `URL 복사 (${n}개)`;
+  const n=selectedIds.size;
+  document.getElementById('selectedCount').textContent=`${n}개 선택`;
+  const btn=document.getElementById('copyBtn');
+  btn.disabled=n===0; btn.textContent=`URL 복사 (${n}개)`;
 }
 function toggleSelectAll() {
-  if (selectedIds.size === articles.length) selectedIds.clear();
-  else articles.forEach(a => selectedIds.add(a.id));
+  if (selectedIds.size===articles.length) selectedIds.clear(); else articles.forEach(a=>selectedIds.add(a.id));
   renderList();
 }
-
 async function shareOne(id) {
-  const a = articles[id];
-  if (navigator.share) {
-    try { await navigator.share({ title: a.title, url: a.link }); } catch(e) {}
-  } else {
-    const text = `📰 ${a.title}\n${a.link}`;
-    navigator.clipboard.writeText(text)
-      .then(() => showToast('✅ 클립보드에 복사됐어요!'))
-      .catch(() => showToast('복사 실패'));
-  }
+  const a=articles[id];
+  if (navigator.share) { try { await navigator.share({title:a.title,url:a.link}); } catch(e) {} }
+  else { navigator.clipboard.writeText(`📰 ${a.title}\n${a.link}`).then(()=>showToast('✅ 복사됐어요!')); }
 }
-
 function selectSort(el) {
-  document.querySelectorAll('#sortGroup .pill').forEach(p => p.classList.remove('active'));
-  el.classList.add('active'); sortVal = el.dataset.val;
-  localStorage.setItem('naver_sort', sortVal);
+  document.querySelectorAll('#sortGroup .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active'); sortVal=el.dataset.val; localStorage.setItem('naver_sort',sortVal);
 }
 function selectPeriod(el) {
-  document.querySelectorAll('#periodGroup .pill').forEach(p => p.classList.remove('active'));
-  el.classList.add('active'); periodVal = el.dataset.val;
-  localStorage.setItem('naver_period', periodVal);
-  document.getElementById('dateRange').classList.toggle('open', periodVal === 'custom');
+  document.querySelectorAll('#periodGroup .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active'); periodVal=el.dataset.val; localStorage.setItem('naver_period',periodVal);
+  document.getElementById('dateRange').classList.toggle('open',periodVal==='custom');
 }
-
-function getDateRange() {
-  if (periodVal === 'all') return { start: null, end: null };
-  if (periodVal === 'custom') {
-    const s = document.getElementById('startDate').value;
-    const e = document.getElementById('endDate').value;
-    localStorage.setItem('naver_start', s); localStorage.setItem('naver_end', e);
-    return { start: s ? new Date(s).getTime() : null, end: e ? new Date(e+'T23:59:59').getTime() : null };
+function selectDisplay(el) {
+  document.querySelectorAll('#displayGroup .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  displayVal = el.dataset.val;
+  localStorage.setItem('naver_display', displayVal);
+  document.getElementById('displayCustomRow').style.display = displayVal === 'custom' ? 'flex' : 'none';
+}
+function saveDisplayVal() {
+  const v = document.getElementById('displayCustomVal').value;
+  if (v) localStorage.setItem('naver_display_custom', v);
+}
+function getDisplayCount() {
+  if (displayVal === '0') return 100; // 무제한 = 네이버 API 최대값 100
+  if (displayVal === 'custom') {
+    const v = parseInt(localStorage.getItem('naver_display_custom') || '100');
+    return Math.min(Math.max(v, 1), 1000);
   }
-  const map = { '1h': 1/24, '1d': 1, '1w': 7, '1m': 30, '3m': 90 };
-  const now = new Date();
-  return { start: now.getTime() - (map[periodVal]||1)*86400000, end: now.getTime() };
+  return parseInt(displayVal) || 100;
 }
-function isInRange(pubDate, start, end) {
-  const d = new Date(pubDate).getTime();
-  if (start && d < start) return false;
-  if (end && d > end) return false;
+function getDateRange() {
+  if (periodVal==='all') return {start:null,end:null};
+  if (periodVal==='custom') {
+    const s=document.getElementById('startDate').value;
+    const e=document.getElementById('endDate').value;
+    localStorage.setItem('naver_start',s); localStorage.setItem('naver_end',e);
+    return {start:s?new Date(s).getTime():null,end:e?new Date(e+'T23:59:59').getTime():null};
+  }
+  const map={'1h':1/24,'1d':1,'1w':7,'1m':30,'3m':90};
+  const now=new Date();
+  return {start:now.getTime()-(map[periodVal]||1)*86400000,end:now.getTime()};
+}
+function isInRange(pubDate,start,end) {
+  const d=new Date(pubDate).getTime();
+  if (start&&d<start) return false;
+  if (end&&d>end) return false;
   return true;
 }
 function stripHtml(html) {
@@ -492,69 +796,30 @@ function stripHtml(html) {
 }
 function formatDate(pubDate) {
   try {
-    const d = new Date(pubDate);
+    const d=new Date(pubDate);
     return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   } catch { return ''; }
 }
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
 }
 function showError(msg) {
-  const el = document.getElementById('errorMsg');
-  el.textContent = msg; el.style.display = msg ? 'block' : 'none';
+  const el=document.getElementById('errorMsg');
+  el.textContent=msg; el.style.display=msg?'block':'none';
 }
-
-function showBlocked() {
-  document.getElementById('modalBlocked').classList.add('show');
-  document.getElementById('articleFrame').style.display = 'none';
-  window.open(currentArticleUrl, '_blank');
-}
-function openCurrent() { window.open(currentArticleUrl, '_blank'); }
-function closeModal() {
-  document.getElementById('modal').classList.remove('open');
-  document.getElementById('modalOverlay').classList.remove('open');
-  document.body.style.overflow = '';
-  document.getElementById('articleFrame').src = '';
-  renderList();
-  if (history.state && history.state.modal) history.back();
-}
-function openModal(id) {
-  activeId = id;
-  document.querySelectorAll('.article-item').forEach(el => el.classList.remove('active'));
-  document.getElementById(`item-${id}`)?.classList.add('active');
-  const a = articles[id];
-  window.open(a.link, '_blank');
-}
-window.addEventListener('popstate', function() {
-  const modal = document.getElementById('modal');
-  if (modal.classList.contains('open')) {
-    modal.classList.remove('open');
-    document.getElementById('modalOverlay').classList.remove('open');
-    document.body.style.overflow = '';
-    document.getElementById('articleFrame').src = '';
-    renderList();
-  }
-});
-
 function copyUrls() {
   if (!selectedIds.size) return;
-  const urls = [...selectedIds].map(id => `📰 ${articles[id].title}\n${articles[id].link}`).join('\n\n\n') + '\n.';
-  
-  const doCopy = () => {
-    if (navigator.share) {
-      navigator.share({ text: urls }).catch(() => {});
-    }
-  };
-
+  const urls=[...selectedIds].map(id=>`📰 ${articles[id].title}\n${articles[id].link}`).join('\n\n\n')+'\n.';
+  const share=()=>{if(navigator.share)navigator.share({text:urls}).catch(()=>{});};
   navigator.clipboard.writeText(urls)
-    .then(() => { showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`); doCopy(); })
-    .catch(() => {
-      const ta = document.createElement('textarea');
-      ta.value = urls; document.body.appendChild(ta); ta.select();
+    .then(()=>{showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`);share();})
+    .catch(()=>{
+      const ta=document.createElement('textarea');
+      ta.value=urls; document.body.appendChild(ta); ta.select();
       document.execCommand('copy'); document.body.removeChild(ta);
-      showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`); doCopy();
+      showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`); share();
     });
 }
 </script>
