@@ -10,6 +10,20 @@ exports.handler = async function(event) {
     };
   }
 
+  // 웹문서 검색 (신문사 홈페이지 찾기용)
+  if (type === 'webkr') {
+    try {
+      const p = new URLSearchParams({ query, display: display || 10, start: start || 1 });
+      const res = await fetch(`https://openapi.naver.com/v1/search/webkr.json?${p}`, {
+        headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
+      });
+      const data = await res.json();
+      return { statusCode: 200, headers: corsHeaders(), body: JSON.stringify(data) };
+    } catch(e) {
+      return { statusCode: 500, headers: corsHeaders(), body: JSON.stringify({ error: e.message }) };
+    }
+  }
+
   try {
     // 1) 네이버 뉴스 API 검색 (항상 실행)
     const naverItems = await searchNaver({ query, display: display || 100, start: start || 1, sort: sort || 'date', clientId, clientSecret });
