@@ -599,7 +599,7 @@ async function searchSite() {
 
   try {
     const params = new URLSearchParams({query, display:20, start:1, clientId, clientSecret, type:'webkr'});
-    const res = await fetch('/.netlify/functions/news?' + params);
+    const res = await fetch('/api/news?' + params);
     const data = await res.json();
 
     const excludes = ['naver.com','google.com','daum.net','nate.com','zum.com','kakao.com',
@@ -741,7 +741,7 @@ async function runSearch(queries) {
     for (const query of queries) {
       const params=new URLSearchParams({query,display:getDisplayCount(),start:1,sort:sortVal,clientId,clientSecret});
       if (sitesParam) params.set('sites', sitesParam);
-      const res=await fetch(`/.netlify/functions/news?${params}`);
+      const res=await fetch(`/api/news?${params}`);
       if (!res.ok) { const err=await res.json().catch(()=>({})); throw new Error(err.error||`오류 ${res.status}`); }
       const data=await res.json();
       (data.items||[]).forEach(item=>{
