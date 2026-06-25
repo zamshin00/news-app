@@ -351,20 +351,14 @@ const DEFAULT_GROUPS = Array.from({length:5}, (_,i) => ({
   } else {
     document.getElementById('apiFields').classList.add('open');
   }
-  sortVal = localStorage.getItem('naver_sort') || 'sim';
-  document.querySelectorAll('#sortGroup .pill').forEach(p => { if (p.dataset.val === sortVal) p.classList.add('active'); });
-  periodVal = localStorage.getItem('naver_period') || '1d';
-  document.querySelectorAll('#periodGroup .pill').forEach(p => { if (p.dataset.val === periodVal) p.classList.add('active'); });
-  if (periodVal === 'custom') document.getElementById('dateRange').classList.add('open');
+  // 정렬/기간/검색량은 매번 디폴트(관련도순/1일/전체)로 시작
+  sortVal = 'sim'; periodVal = '1d'; displayVal = '0';
+  document.querySelectorAll('#sortGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === sortVal); });
+  document.querySelectorAll('#periodGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === periodVal); });
+  document.querySelectorAll('#displayGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === displayVal); });
   const today = new Date().toISOString().split('T')[0];
-  document.getElementById('endDate').value = localStorage.getItem('naver_end') || today;
-  document.getElementById('startDate').value = localStorage.getItem('naver_start') || today;
-  displayVal = localStorage.getItem('naver_display') || '0';
-  document.querySelectorAll('#displayGroup .pill').forEach(p => { if (p.dataset.val === displayVal) p.classList.add('active'); });
-  if (displayVal === 'custom') {
-    document.getElementById('displayCustomRow').style.display = 'flex';
-    document.getElementById('displayCustomVal').value = localStorage.getItem('naver_display_custom') || '100';
-  }
+  document.getElementById('endDate').value = today;
+  document.getElementById('startDate').value = today;
   renderGroupTabs();
   renderKeywordRows();
   renderGroupSettingsList();
@@ -542,9 +536,11 @@ function saveApiKeys() {
 }
 
 function getSites() {
-  return JSON.parse(localStorage.getItem('naver_sites') || 'null') || [
-    { name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true }
-  ];
+  const saved = JSON.parse(localStorage.getItem('naver_sites') || 'null');
+  if (!saved) return [{ name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true }];
+  // 저장된 목록에 네이버가 없으면 맨 앞에 자동 추가
+  if (!saved.find(s => s.fixed)) saved.unshift({ name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true });
+  return saved;
 }
 function saveSites(s) { localStorage.setItem('naver_sites', JSON.stringify(s)); }
 
@@ -560,7 +556,7 @@ function renderSites() {
     </div>`).join('');
 }
 
-function toggleSite(i) { const s=getSites(); s[i].enabled=!s[i].enabled; saveSites(s); }
+function toggleSite(i) { const s=getSites(); s[i].enabled=!s[i].enabled; saveSites(s); renderSites(); }
 function deleteSite(i) { const s=getSites(); s.splice(i,1); saveSites(s); renderSites(); showToast('삭제됐어요.'); }
 
 async function searchSite() {
