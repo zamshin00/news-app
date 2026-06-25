@@ -351,6 +351,22 @@ const DEFAULT_GROUPS = Array.from({length:5}, (_,i) => ({
   } else {
     document.getElementById('apiFields').classList.add('open');
   }
+
+  // naver_sites 강제 보정: 네이버가 없으면 추가, 있으면 fixed:true 보정 후 재저장
+  const naverDefault = { name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true };
+  const savedSites = JSON.parse(localStorage.getItem('naver_sites') || 'null');
+  if (!savedSites) {
+    localStorage.setItem('naver_sites', JSON.stringify([naverDefault]));
+  } else {
+    const hasNaver = savedSites.find(s => s.url === 'naver' || s.fixed);
+    if (!hasNaver) savedSites.unshift(naverDefault);
+    else { const ni = savedSites.findIndex(s => s.url === 'naver' || s.fixed); savedSites[ni].fixed = true; savedSites[ni].name = '네이버 뉴스'; }
+    localStorage.setItem('naver_sites', JSON.stringify(savedSites));
+  }
+
+  // currentGroupIdx 항상 -1로 초기화 (아무 그룹도 선택 안 된 상태)
+  currentGroupIdx = -1;
+
   // 정렬/기간/검색량은 매번 디폴트(관련도순/1일/전체)로 시작
   sortVal = 'sim'; periodVal = '1d'; displayVal = '0';
   document.querySelectorAll('#sortGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === sortVal); });
