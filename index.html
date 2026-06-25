@@ -330,7 +330,7 @@ let selectedIds = new Set();
 let sortVal = 'sim';
 let periodVal = '1d';
 let displayVal = '0'; // '0'=전체, '20','50','100','custom'
-let currentGroupIdx = 0;
+let currentGroupIdx = -1; // -1 = 아무 그룹도 선택 안 된 상태
 let editingGroupIdx = -1;
 
 const GROUP_COLORS = ['#03C75A','#378ADD','#D85A30','#9B59B6','#E67E22'];
@@ -385,6 +385,10 @@ function renderGroupTabs() {
   document.getElementById('groupTabs').innerHTML = groups.map((g,i) =>
     `<div class="group-tab ${i===currentGroupIdx?'active':''}" onclick="selectGroup(${i})">${g.name}</div>`
   ).join('');
+  // 키워드 rows: 아무 그룹도 선택 안 됐으면 공란
+  if (currentGroupIdx === -1) {
+    document.getElementById('keywordRows').innerHTML = `<div style="padding:12px 0;text-align:center;color:var(--text-muted);font-size:13px;">즐겨찾기 그룹을 선택해주세요</div>`;
+  }
 }
 
 function selectGroup(idx) {
@@ -394,6 +398,7 @@ function selectGroup(idx) {
 }
 
 function renderKeywordRows() {
+  if (currentGroupIdx === -1) return;
   const g = getGroups()[currentGroupIdx];
   const container = document.getElementById('keywordRows');
   let html = '';
@@ -537,9 +542,15 @@ function saveApiKeys() {
 
 function getSites() {
   const saved = JSON.parse(localStorage.getItem('naver_sites') || 'null');
-  if (!saved) return [{ name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true }];
-  // 저장된 목록에 네이버가 없으면 맨 앞에 자동 추가
-  if (!saved.find(s => s.fixed)) saved.unshift({ name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true });
+  const naverDefault = { name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true };
+  if (!saved) return [naverDefault];
+  // 저장된 목록에서 naver url 항목 찾기 (fixed 여부 무관)
+  const hasNaver = saved.find(s => s.url === 'naver' || s.fixed);
+  if (!hasNaver) saved.unshift(naverDefault);
+  else { // 있으면 fixed:true 강제 보정
+    const idx = saved.findIndex(s => s.url === 'naver' || s.fixed);
+    saved[idx].fixed = true; saved[idx].name = '네이버 뉴스';
+  }
   return saved;
 }
 function saveSites(s) { localStorage.setItem('naver_sites', JSON.stringify(s)); }
@@ -565,47 +576,57 @@ async function searchSite() {
   const clientId = localStorage.getItem('naver_client_id')||'';
   const clientSecret = localStorage.getItem('naver_client_secret')||'';
   if (!clientId||!clientSecret) { showToast('API 키를 먼저 저장해주세요.'); return; }
-  showToast('검색 중...');
-  try {
-    // 웹문서 API로 신문사 홈페이지 검색
-    const params = new URLSearchParams({query:`${query} 신문사 공식 홈페이지`,display:10,start:1,clientId,clientSecret,type:'webkr'});
-    const res = await fetch(`/.netlify/functions/news?${params}`);
-    const data = await res.json();
-    const el = document.getElementById('siteResults');
 
-    // 도메인 기준 중복 제거 + 뉴스포털 제외
-    const excludes = ['naver.com','google.com','daum.net','nate.com','zum.com','kakao.com','youtube.com','facebook.com','instagram.com','twitter.com','wikipedia.org'];
-    const seen = new Set();
-    const items = (data.items||[]).filter(item => {
-      const domain = (item.link||'').replace(/https?:\/\//,'').split('/')[0].replace(/^www\./,'');
-      if (!domain) return false;
-      if (excludes.some(e => domain.includes(e))) return false;
-      if (seen.has(domain)) return false;
-      seen.add(domain);
-      return true;
-    }).slice(0,5);
+  const el = document.getElementById('siteResults');
+  el.innerHTML = '<div class="site-result-header" style="color:var(--text-muted);">검색 중...</div>';
+  el.classList.add('open');
+
+  try {
+    const params = new URLSearchParams({query, display:20, start:1, clientId, clientSecret, type:'webkr'});
+    const res = await fetch('/.netlify/functions/news?' + params);
+    const data = await res.json();
+
+    const excludes = ['naver.com','google.com','daum.net','nate.com','zum.com','kakao.com',
+      'youtube.com','facebook.com','instagram.com','twitter.com','wikipedia.org','tistory.com','blogspot.com'];
+
+    // 도메인별 그룹핑 → 경로 가장 짧은 URL(홈페이지에 가까운)을 대표로 선택
+    const domainMap = new Map();
+    (data.items||[]).forEach(item => {
+      const rawUrl = item.link || '';
+      const domainFull = rawUrl.replace(/https?:\/\//, '').split('/')[0];
+      const domain = domainFull.replace(/^www\./, '');
+      if (!domain) return;
+      if (excludes.some(e => domain.includes(e))) return;
+      const pathLen = rawUrl.replace(/https?:\/\/[^/]+/, '').length;
+      if (!domainMap.has(domain) || pathLen < domainMap.get(domain).pathLen) {
+        const title = (item.title||'').replace(/<[^>]*>/g,'').replace(/\s*[-|:].*/, '').trim();
+        domainMap.set(domain, { domain, title, pathLen, rootUrl: 'https://' + domainFull });
+      }
+    });
+
+    const items = [...domainMap.values()].slice(0, 5);
 
     if (!items.length) {
-      el.innerHTML=`<div class="site-result-header">검색 결과가 없어요. 직접 입력 탭을 이용해주세요.</div>`;
-      el.classList.add('open'); return;
+      el.innerHTML = '<div class="site-result-header">검색 결과가 없어요.<br><span style="font-size:12px;color:var(--text-muted);">직접 입력 탭에서 URL을 입력해주세요.</span></div>';
+      return;
     }
-    el.innerHTML = `<div class="site-result-header">"${query}" 검색 결과 — 맞는 사이트를 선택해주세요</div>`
-      + items.map(item => {
-        const rawUrl = item.link||'';
-        const domain = rawUrl.replace(/https?:\/\//,'').split('/')[0];
-        const safeUrl = 'https://' + domain;
-        const name = (item.title||'').replace(/<[^>]*>/g,'').replace(/\s*[-|].*/,'').trim();
-        const safeName = name.replace(/'/g,'\\'+'\'' ).replace(/"/g,'&quot;');
-        return `<div class="site-result-item">
-          <div style="flex:1;min-width:0;">
-            <div class="site-result-name">${name}</div>
-            <div class="site-result-url">${domain}</div>
-          </div>
-          <button class="site-add-btn" onclick="addSite('${safeName}','${safeUrl}')">추가</button>
-        </div>`;
+
+    el.innerHTML = '<div class="site-result-header">' + query + ' 검색 결과 — 맞는 사이트를 선택하세요</div>'
+      + items.map(function(item) {
+        var safeName = item.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        var safeUrl = item.rootUrl.replace(/'/g, "\\'");
+        return '<div class="site-result-item">'
+          + '<div style="flex:1;min-width:0;">'
+          + '<div class="site-result-name">' + (item.title||item.domain) + '</div>'
+          + '<div class="site-result-url">' + item.domain + '</div>'
+          + '</div>'
+          + '<button class="site-add-btn" onclick="addSite(\'' + safeName + '\',\'' + safeUrl + '\')">추가</button>'
+          + '</div>';
       }).join('');
-    el.classList.add('open');
-  } catch(e) { showToast('검색 중 오류가 발생했어요.'); }
+
+  } catch(e) {
+    el.innerHTML = '<div class="site-result-header" style="color:#c62828;">검색 중 오류가 발생했어요.</div>';
+  }
 }
 
 function switchSiteTab(tab) {
