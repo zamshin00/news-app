@@ -1,145 +1,1123 @@
-export default async function handler(req, res) {
-  const { query, display, start, sort, clientId, clientSecret, type, sites, naverEnabled } = req.query;
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>네이버 뉴스 수집기</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --green: #03C75A;
+  --green-dark: #02a84b;
+  --green-light: #e8f9f0;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --border: #e4e6ea;
+  --text: #191919;
+  --text-sub: #555;
+  --text-muted: #999;
+  --radius-sm: 8px;
+}
+html, body { height: 100%; }
+body { font-family: -apple-system, 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+.header { position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; height: 48px; gap: 8px; }
+.logo { font-size: 20px; font-weight: 900; color: var(--green); }
+.logo-sub { font-size: 13px; color: var(--text-muted); }
+.tab-bar { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 99; }
+.tab { flex: 1; padding: 11px 0; text-align: center; font-size: 13px; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; }
+.tab.active { color: var(--green); border-bottom: 2px solid var(--green); font-weight: 700; }
+.screen { display: none; }
+.screen.active { display: block; }
 
-  if (!query || !clientId || !clientSecret) {
-    return res.status(400).json({ error: '필수 파라미터가 없습니다.' });
+/* 검색 화면 */
+.search-panel { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.section-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.group-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.group-tab { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; }
+.group-tab.active { background: var(--green); border-color: var(--green); color: white; font-weight: 700; }
+.preset-row { display: flex; align-items: center; gap: 4px; }
+.preset-input { flex: 1; min-width: 0; }
+.op-select { padding: 5px 4px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; color: var(--green); background: var(--green-light); cursor: pointer; flex-shrink: 0; -webkit-appearance: none; text-align: center; }
+.row-op-select { padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; color: var(--green); background: var(--green-light); cursor: pointer; -webkit-appearance: none; }
+.paren { font-size: 15px; font-weight: 700; color: var(--text-muted); flex-shrink: 0; }
+/* 입력창 내부 지우개 */
+.input-wrap { position: relative; flex: 1; min-width: 0; }
+.input-wrap input { width: 100%; padding-right: 34px; }
+.input-clear-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 2px; display: flex; align-items: center; justify-content: center; }
+.input-clear-btn:hover span { color: #333 !important; }
+.preset-search-btn { padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.or-between { font-size: 11px; font-weight: 700; color: var(--text-muted); padding: 2px 0 2px 4px; }
+.search-all-btn { width: 100%; padding: 10px; background: var(--green); color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; }
+.section-divider { height: 1px; background: var(--border); margin: 2px 0; }
+.direct-row { display: flex; gap: 8px; }
+.direct-row input { flex: 1; }
+.option-group { display: flex; flex-direction: column; gap: 4px; }
+.pill-group { display: flex; flex-wrap: wrap; gap: 4px; }
+.pill { padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; }
+.pill.active { background: var(--green); border-color: var(--green); color: white; font-weight: 700; }
+.date-range { display: none; flex-direction: column; gap: 6px; background: #fafafa; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; margin-top: 2px; }
+.date-range.open { display: flex; }
+.date-range-row { display: flex; align-items: center; gap: 8px; }
+.date-range-row span { font-size: 12px; color: var(--text-muted); }
+input[type="text"], input[type="date"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; color: var(--text); background: var(--surface); outline: none; transition: border 0.15s; -webkit-appearance: none; }
+input:focus { border-color: var(--green); }
+input[type="date"] { font-size: 12px; }
+.list-header { display: none; align-items: center; justify-content: space-between; padding: 8px 16px; background: #fafafa; border-bottom: 1px solid var(--border); position: sticky; top: 96px; z-index: 90; }
+.list-header.visible { display: flex; }
+.list-meta { display: flex; align-items: center; gap: 8px; }
+.count-badge { background: var(--green); color: white; font-size: 11px; font-weight: 700; border-radius: 20px; padding: 2px 9px; }
+.selected-count { font-size: 12px; color: var(--text-muted); }
+.select-all-btn { font-size: 12px; color: var(--green); font-weight: 700; background: none; border: none; cursor: pointer; padding: 4px; }
+.article-list { padding-bottom: 80px; }
+.article-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #f0f0f0; background: var(--surface); cursor: pointer; }
+.article-item:active { background: #f5f5f5; }
+.article-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; accent-color: var(--green); cursor: pointer; }
+.article-info { flex: 1; min-width: 0; }
+.article-title { font-size: 14px; font-weight: 500; line-height: 1.5; margin-bottom: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.article-meta { display: flex; align-items: center; gap: 6px; }
+.article-source { font-size: 11px; color: var(--green); font-weight: 600; }
+.article-date { font-size: 11px; color: var(--text-muted); }
+.article-share-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px 4px; flex-shrink: 0; opacity: 0.6; }
+.copy-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px; z-index: 100; }
+.btn-copy { width: 100%; padding: 12px; background: #1a1a1a; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-copy:disabled { background: #ccc; cursor: not-allowed; }
+
+/* 설정 화면 */
+.settings-screen { padding-bottom: 40px; }
+.settings-section-title { padding: 16px 16px 6px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; }
+.api-box { background: var(--green-light); border: 1px solid #c3ecd6; border-radius: var(--radius-sm); margin: 0 16px 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+.api-header { display: flex; align-items: center; justify-content: space-between; }
+.api-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-sub); }
+.api-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+.api-dot.active { background: var(--green); }
+.api-reauth-btn { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); background: white; font-size: 11px; color: var(--text-sub); cursor: pointer; }
+.api-fields { display: none; flex-direction: column; gap: 6px; }
+.api-fields.open { display: flex; }
+.api-field-row { display: flex; align-items: center; gap: 8px; }
+.api-field-row span { font-size: 11px; color: var(--text-sub); min-width: 50px; }
+.green-btn { padding: 7px; border-radius: var(--radius-sm); background: var(--green); color: white; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
+.gray-btn { padding: 7px; border-radius: var(--radius-sm); background: #999; color: white; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
+.group-list-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+.group-list-item:active { background: #f5f5f5; }
+.group-color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.group-list-name { font-size: 14px; color: var(--text); }
+.group-list-sub { font-size: 11px; color: var(--text-muted); margin-left: 6px; }
+.group-list-arrow { font-size: 16px; color: var(--text-muted); margin-left: auto; }
+.site-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.site-check { width: 18px; height: 18px; accent-color: var(--green); flex-shrink: 0; }
+.site-info { flex: 1; min-width: 0; }
+.site-name { font-size: 14px; color: var(--text); }
+.site-url { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.site-del-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 18px; }
+.site-search-row { display: flex; gap: 8px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.site-search-row input { flex: 1; }
+.site-results { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin: 0 16px 8px; overflow: hidden; display: none; }
+.site-results.open { display: block; }
+.site-result-header { padding: 8px 14px; font-size: 11px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.site-result-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #f5f5f5; }
+.site-result-item:last-child { border-bottom: none; }
+.site-result-name { font-size: 13px; color: var(--text); }
+.site-result-url { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.site-add-btn { padding: 4px 12px; background: var(--green); color: white; border: none; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+/* 편집 화면 */
+.edit-screen { display: none; }
+.edit-screen.active { display: block; }
+.edit-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 90; }
+.back-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-sub); padding: 0 4px; }
+.edit-title { font-size: 15px; font-weight: 700; flex: 1; }
+.edit-save-btn { padding: 6px 16px; background: var(--green); color: white; border: none; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.edit-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.group-name-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; color: var(--text); background: var(--surface); outline: none; }
+.group-name-input:focus { border-color: var(--green); }
+
+/* STATES */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 60px 32px; text-align: center; color: var(--text-muted); }
+.empty-state .icon { font-size: 48px; }
+.empty-state h3 { font-size: 15px; font-weight: 600; color: var(--text-sub); }
+.empty-state p { font-size: 13px; line-height: 1.6; }
+.skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 4px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.error-box { padding: 8px 12px; background: #fff3f3; border: 1px solid #ffcdd2; border-radius: var(--radius-sm); font-size: 12px; color: #c62828; }
+.no-results { padding: 48px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(10px); background: #1a1a1a; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; transition: all 0.25s; pointer-events: none; z-index: 999; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.display-custom-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.display-custom-row input { width: 120px !important; }
+.importance-btn { background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 3px; opacity: 0.35; transition: opacity 0.15s; flex-shrink: 0; line-height: 1; }
+.importance-btn.active { opacity: 1; }
+.history-date-group { padding: 8px 16px 4px; font-size: 11px; font-weight: 700; color: var(--text-muted); background: var(--bg); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.4px; }
+.history-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 16px; border-bottom: 1px solid #f0f0f0; background: white; }
+.history-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.history-info { flex: 1; min-width: 0; }
+.history-title { font-size: 13px; font-weight: 500; line-height: 1.4; margin-bottom: 3px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.history-meta { font-size: 11px; color: var(--text-muted); }
+.history-del-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; flex-shrink: 0; padding: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="logo">N</span>
+  <span class="logo-sub">뉴스 수집기</span>
+</div>
+
+<div class="tab-bar">
+  <div class="tab active" id="tab-search" onclick="switchTab('search')">🔍 검색(기사)</div>
+  <div class="tab" id="tab-fss" onclick="switchTab('fss')">🏛 금융감독원</div>
+  <div class="tab" id="tab-settings" onclick="switchTab('settings')">⚙️ 설정</div>
+  <div class="tab" id="tab-history" onclick="switchTab('history')">📋 공유이력</div>
+</div>
+
+<!-- 검색 화면 -->
+<div class="screen active" id="screen-search">
+  <div class="search-panel">
+    <div>
+      <div class="section-label" style="margin-bottom:6px">검색 즐겨찾기</div>
+      <div class="group-tabs" id="groupTabs"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px" id="keywordRows"></div>
+    <div class="section-divider"></div>
+    <div class="direct-row">
+      <input type="text" id="keyword" placeholder="직접 검색..." autocomplete="new-password" onkeydown="if(event.key==='Enter') doDirectSearch()">
+      <button style="padding:8px 14px;background:var(--green);color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="doDirectSearch()">검색</button>
+    </div>
+    <div class="option-group">
+      <div class="section-label">정렬</div>
+      <div class="pill-group" id="sortGroup">
+        <button class="pill" data-val="date" onclick="selectSort(this)">최신순</button>
+        <button class="pill" data-val="sim" onclick="selectSort(this)">관련도순</button>
+      </div>
+    </div>
+    <div class="option-group">
+      <div class="section-label">기간</div>
+      <div class="pill-group" id="periodGroup">
+        <button class="pill" data-val="all" onclick="selectPeriod(this)">전체</button>
+        <button class="pill" data-val="1h" onclick="selectPeriod(this)">1시간</button>
+        <button class="pill" data-val="1d" onclick="selectPeriod(this)">1일</button>
+        <button class="pill" data-val="1w" onclick="selectPeriod(this)">1주</button>
+        <button class="pill" data-val="1m" onclick="selectPeriod(this)">1개월</button>
+        <button class="pill" data-val="3m" onclick="selectPeriod(this)">3개월</button>
+        <button class="pill" data-val="custom" onclick="selectPeriod(this)">직접입력</button>
+      </div>
+      <div class="date-range" id="dateRange">
+        <div class="date-range-row">
+          <input type="date" id="startDate">
+          <span>~</span>
+          <input type="date" id="endDate">
+        </div>
+      </div>
+    </div>
+    <div class="option-group">
+      <div class="section-label">최대 검색량</div>
+      <div class="pill-group" id="displayGroup">
+        <button class="pill" data-val="0" onclick="selectDisplay(this)">전체</button>
+        <button class="pill" data-val="20" onclick="selectDisplay(this)">20개</button>
+        <button class="pill" data-val="50" onclick="selectDisplay(this)">50개</button>
+        <button class="pill" data-val="100" onclick="selectDisplay(this)">100개</button>
+        <button class="pill display-custom-btn" data-val="custom" onclick="selectDisplay(this)">직접입력</button>
+      </div>
+      <div class="display-custom-row" id="displayCustomRow" style="display:none;">
+        <input type="number" id="displayCustomVal" min="1" max="1000" placeholder="숫자 입력" style="width:120px;" oninput="saveDisplayVal()">
+        <span style="font-size:12px;color:var(--text-muted);">개 (최대 1000)</span>
+      </div>
+    </div>
+    <div id="errorMsg" class="error-box" style="display:none;"></div>
+  </div>
+
+  <div class="list-header" id="listHeader">
+    <div class="list-meta">
+      <span class="count-badge" id="articleCount">0</span>
+      <span class="selected-count" id="selectedCount">0개 선택</span>
+    </div>
+    <button class="select-all-btn" onclick="toggleSelectAll()">전체선택</button>
+  </div>
+
+  <div class="article-list" id="articleList">
+    <div class="empty-state">
+      <div class="icon">📰</div>
+      <h3>뉴스를 검색해보세요</h3>
+      <p>즐겨찾기 키워드를 설정하거나<br>직접 검색어를 입력해주세요.</p>
+    </div>
+  </div>
+
+  <div class="copy-bar">
+    <button class="btn-copy" id="copyBtn" onclick="copyUrls()" disabled>URL 복사 (0개)</button>
+  </div>
+</div>
+
+<!-- 금융감독원 화면 -->
+<div class="screen" id="screen-fss">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:80px 32px;text-align:center;">
+    <div style="font-size:56px;">🏛</div>
+    <h3 style="font-size:17px;font-weight:700;color:var(--text);">금융감독원 공시 검색</h3>
+    <p style="font-size:14px;color:var(--text-sub);line-height:1.7;">현재 개발 중입니다.<br>기사 검색 기능 완성 후 순차 개발 예정이에요.</p>
+    <div style="background:var(--green-light);border:1px solid #c3ecd6;border-radius:var(--radius-sm);padding:12px 20px;font-size:12px;color:#02a84b;font-weight:600;">🚧 Coming Soon</div>
+  </div>
+</div>
+
+<!-- 공유이력 화면 -->
+<div class="screen" id="screen-history">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:white;border-bottom:1px solid var(--border);position:sticky;top:96px;z-index:90;">
+    <span style="font-size:13px;font-weight:700;color:var(--text);">공유 이력</span>
+    <button onclick="downloadHistoryCSV()" style="padding:6px 14px;background:var(--green);color:white;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">⬇ CSV 다운로드</button>
+  </div>
+  <div id="historyList" style="padding-bottom:40px;"></div>
+</div>
+
+<!-- 설정 화면 -->
+<div class="screen settings-screen" id="screen-settings">
+  <div class="settings-section-title">🔑 API 인증</div>
+  <div class="api-box">
+    <div class="api-header">
+      <div class="api-status">
+        <span class="api-dot" id="apiDot"></span>
+        <span id="apiStatusText">API 키 미입력</span>
+      </div>
+      <button class="api-reauth-btn" onclick="toggleApiFields()">재인증</button>
+    </div>
+    <div class="api-fields" id="apiFields">
+      <div class="api-field-row">
+        <span>Client ID</span>
+        <input type="text" id="clientId" placeholder="Client ID 입력" autocomplete="new-password">
+      </div>
+      <div class="api-field-row">
+        <span>Secret</span>
+        <input type="text" id="clientSecret" placeholder="Client Secret 입력" autocomplete="new-password">
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="green-btn" onclick="saveApiKeys()" style="flex:1;">저장</button>
+        <button class="gray-btn" onclick="cancelApiFields()" style="flex:1;">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section-title">⭐ 검색 즐겨찾기</div>
+  <div id="groupSettingsList"></div>
+
+  <div class="settings-section-title" style="margin-top:8px;padding-top:16px;border-top:4px solid var(--bg);">🌐 검색 사이트</div>
+  <div id="siteList"></div>
+
+  <!-- 추가 방법 탭 -->
+  <div style="display:flex;border-bottom:1px solid var(--border);background:var(--surface);margin-top:4px;">
+    <div id="siteTab1" onclick="switchSiteTab(1)" style="flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer;">🔍 이름으로 검색</div>
+    <div id="siteTab2" onclick="switchSiteTab(2)" style="flex:1;padding:10px;text-align:center;font-size:13px;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;">✏️ 직접 입력</div>
+  </div>
+
+  <!-- 이름 검색 -->
+  <div id="siteSearchPanel">
+    <div class="site-search-row">
+      <input type="text" id="siteSearchInput" placeholder="신문사 이름 검색... (예: 보험저널)" autocomplete="new-password" onkeydown="if(event.key==='Enter') searchSite()">
+      <button class="green-btn" style="white-space:nowrap;padding:8px 14px;" onclick="searchSite()">검색</button>
+    </div>
+    <div class="site-results" id="siteResults"></div>
+  </div>
+
+  <!-- 직접 입력 -->
+  <div id="siteDirectPanel" style="display:none;">
+    <div class="site-search-row">
+      <input type="text" id="siteDirectName" placeholder="신문사 이름 (예: 보험저널)" autocomplete="new-password">
+    </div>
+    <div class="site-search-row" style="padding-top:0;">
+      <input type="text" id="siteDirectUrl" placeholder="홈페이지 주소 (예: https://insjournal.co.kr)" autocomplete="new-password">
+      <button class="green-btn" style="white-space:nowrap;padding:8px 14px;" onclick="addSiteDirect()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- 편집 화면 -->
+<div class="edit-screen" id="screen-edit">
+  <div class="edit-header">
+    <button class="back-btn" onclick="closeEdit()">←</button>
+    <span class="edit-title" id="editTitle">그룹 편집</span>
+    <button class="edit-save-btn" onclick="saveEdit()">저장</button>
+  </div>
+  <div class="edit-body">
+    <input type="text" class="group-name-input" id="editGroupName" placeholder="그룹 이름 입력...">
+    <div id="editKeywordRows"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// 지우개 SVG
+const ERASER_SVG = `<span style="font-size:14px;color:#999;line-height:1;">✕</span>`;
+
+let articles = [];
+let selectedIds = new Set();
+let sortVal = 'sim';
+let periodVal = '1d';
+let displayVal = '0'; // '0'=전체, '20','50','100','custom'
+let currentGroupIdx = -1; // -1 = 아무 그룹도 선택 안 된 상태
+let editingGroupIdx = -1;
+
+const GROUP_COLORS = ['#03C75A','#378ADD','#D85A30','#9B59B6','#E67E22'];
+
+const DEFAULT_GROUPS = Array.from({length:5}, (_,i) => ({
+  name: `그룹 ${i+1}`,
+  keywords: ['','','','','','','',''],
+  ops: ['OR','OR','OR','OR'],
+  rowops: ['OR','OR','OR']
+}));
+
+(function init() {
+  const id = localStorage.getItem('naver_client_id') || '';
+  const secret = localStorage.getItem('naver_client_secret') || '';
+  if (id && secret) {
+    document.getElementById('apiDot').classList.add('active');
+    document.getElementById('apiStatusText').textContent = 'API 연결됨';
+  } else {
+    document.getElementById('apiFields').classList.add('open');
   }
 
-  // 웹문서 검색 (신문사 홈페이지 찾기용)
-  if (type === 'webkr') {
-    try {
-      const p = new URLSearchParams({ query, display: display || 10, start: start || 1 });
-      const r = await fetch(`https://openapi.naver.com/v1/search/webkr.json?${p}`, {
-        headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
-      });
-      const data = await r.json();
-      return res.status(200).json(data);
-    } catch(e) {
-      return res.status(500).json({ error: e.message });
-    }
+  // naver_sites 강제 보정 + 기본 보험 신문사 자동 추가
+  const naverDefault = { name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true };
+  const DEFAULT_SITES = [
+    { name: '뉴스포트',    url: 'https://www.newsport.co.kr',  domain: 'newsport.co.kr',  rssUrl: 'https://www.newsport.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '보험매일',    url: 'https://www.fins.co.kr',      domain: 'fins.co.kr',      rssUrl: 'https://www.fins.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '대한금융신문', url: 'https://www.kbanker.co.kr',   domain: 'kbanker.co.kr',   rssUrl: 'https://www.kbanker.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '보험저널',    url: 'https://www.insjournal.co.kr', domain: 'insjournal.co.kr', rssUrl: 'https://www.insjournal.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '보험일보',    url: 'http://www.insura.net',        domain: 'insura.net',       rssUrl: null, crawl: true, enabled: true, fixed: false },
+    { name: '한국보험신문', url: 'https://www.insnews.co.kr',   domain: 'insnews.co.kr',   rssUrl: 'https://www.insnews.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '보험신보',    url: 'https://www.insweek.co.kr',   domain: 'insweek.co.kr',   rssUrl: 'https://www.insweek.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '한국금융신문', url: 'https://www.fntimes.com',     domain: 'fntimes.com',     rssUrl: null, crawl: true, enabled: true, fixed: false },
+  ];
+
+  const savedSites = JSON.parse(localStorage.getItem('naver_sites') || 'null');
+  if (!savedSites) {
+    // 첫 실행: 네이버 + 기본 사이트 목록 저장
+    localStorage.setItem('naver_sites', JSON.stringify([naverDefault, ...DEFAULT_SITES]));
+  } else {
+    // 네이버 보정
+    const hasNaver = savedSites.find(s => s.url === 'naver' || s.fixed);
+    if (!hasNaver) savedSites.unshift(naverDefault);
+    else { const ni = savedSites.findIndex(s => s.url === 'naver' || s.fixed); savedSites[ni].fixed = true; savedSites[ni].name = '네이버 뉴스'; }
+    // 기본 사이트 중 없는 것만 추가
+    DEFAULT_SITES.forEach(def => {
+      if (!savedSites.find(s => s.domain === def.domain)) savedSites.push(def);
+    });
+    localStorage.setItem('naver_sites', JSON.stringify(savedSites));
   }
+
+  // currentGroupIdx 항상 -1로 초기화 (아무 그룹도 선택 안 된 상태)
+  currentGroupIdx = -1;
+
+  // 정렬/기간/검색량은 매번 디폴트(관련도순/1일/전체)로 시작
+  sortVal = 'sim'; periodVal = '1d'; displayVal = '0';
+  document.querySelectorAll('#sortGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === sortVal); });
+  document.querySelectorAll('#periodGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === periodVal); });
+  document.querySelectorAll('#displayGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === displayVal); });
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('endDate').value = today;
+  document.getElementById('startDate').value = today;
+  renderGroupTabs();
+  renderKeywordRows();
+  renderGroupSettingsList();
+  renderSites();
+})();
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  ['search','settings','edit','fss','history'].forEach(s => {
+    const el = document.getElementById('screen-'+s);
+    if (el) el.classList.remove('active');
+  });
+  document.getElementById('tab-'+tab)?.classList.add('active');
+  document.getElementById('screen-'+tab)?.classList.add('active');
+  if (tab === 'history') renderHistory();
+}
+
+function getGroups() {
+  return JSON.parse(localStorage.getItem('naver_groups_v3') || 'null') || DEFAULT_GROUPS;
+}
+function saveGroups(g) { localStorage.setItem('naver_groups_v3', JSON.stringify(g)); }
+
+function renderGroupTabs() {
+  const groups = getGroups();
+  document.getElementById('groupTabs').innerHTML = groups.map((g,i) =>
+    `<div class="group-tab ${i===currentGroupIdx?'active':''}" onclick="selectGroup(${i})">${g.name}</div>`
+  ).join('');
+  // 키워드 rows: 아무 그룹도 선택 안 됐으면 공란
+  if (currentGroupIdx === -1) {
+    document.getElementById('keywordRows').innerHTML = `<div style="padding:12px 0;text-align:center;color:var(--text-muted);font-size:13px;">즐겨찾기 그룹을 선택해주세요</div>`;
+  }
+}
+
+function selectGroup(idx) {
+  currentGroupIdx = idx;
+  renderGroupTabs();
+  renderKeywordRows();
+}
+
+function renderKeywordRows() {
+  if (currentGroupIdx === -1) return;
+  const g = getGroups()[currentGroupIdx];
+  const container = document.getElementById('keywordRows');
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    const ka = g.keywords[i*2] || '';
+    const kb = g.keywords[i*2+1] || '';
+    const op = g.ops[i] || 'OR';
+    const rowop = g.rowops?.[i] || 'OR';
+    html += `
+      <div class="preset-row">
+        <span class="paren">(</span>
+        <div class="input-wrap">
+          <input type="text" id="k${i}a" value="${ka.replace(/"/g,'&quot;')}" placeholder="키워드${i*2+1}" autocomplete="new-password">
+          <button class="input-clear-btn" onclick="clearInput('k${i}a')" title="지우기">${ERASER_SVG}</button>
+        </div>
+        <select class="op-select" id="kop${i}">
+          <option value="OR" ${op==='OR'?'selected':''}>OR</option>
+          <option value="AND" ${op==='AND'?'selected':''}>AND</option>
+        </select>
+        <div class="input-wrap">
+          <input type="text" id="k${i}b" value="${kb.replace(/"/g,'&quot;')}" placeholder="키워드${i*2+2}" autocomplete="new-password">
+          <button class="input-clear-btn" onclick="clearInput('k${i}b')" title="지우기">${ERASER_SVG}</button>
+        </div>
+        <span class="paren">)</span>
+        <button class="preset-search-btn" onclick="searchRow(${i})">🔍</button>
+      </div>
+      ${i < 3 ? `<div style="padding:2px 0 2px 4px;"><select class="row-op-select" id="krowop${i}"><option value="OR" ${rowop==='OR'?'selected':''}>OR</option><option value="AND" ${rowop==='AND'?'selected':''}>AND</option></select></div>` : ''}`;
+  }
+  html += `<button class="search-all-btn" onclick="searchAll()">즐겨찾기 전체 검색</button>`;
+  container.innerHTML = html;
+}
+
+function clearInput(id) {
+  const el = document.getElementById(id);
+  if (el) { el.value = ''; el.focus(); }
+}
+
+function renderGroupSettingsList() {
+  const groups = getGroups();
+  document.getElementById('groupSettingsList').innerHTML = groups.map((g,i) => {
+    const count = g.keywords.filter(k=>k.trim()).length;
+    return `
+      <div class="group-list-item" onclick="openEdit(${i})">
+        <div class="group-color-dot" style="background:${GROUP_COLORS[i%GROUP_COLORS.length]}"></div>
+        <div class="group-list-name">${g.name}</div>
+        <span class="group-list-sub">키워드 ${count}개</span>
+        <span class="group-list-arrow">›</span>
+      </div>`;
+  }).join('');
+}
+
+function openEdit(idx) {
+  editingGroupIdx = idx;
+  const g = getGroups()[idx];
+  document.getElementById('editGroupName').value = g.name;
+  document.getElementById('editTitle').textContent = g.name;
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    const ka = g.keywords[i*2] || '';
+    const kb = g.keywords[i*2+1] || '';
+    const op = g.ops[i] || 'OR';
+    html += `
+      <div class="preset-row">
+        <span class="paren">(</span>
+        <div class="input-wrap">
+          <input type="text" id="ek${i}a" value="${ka.replace(/"/g,'&quot;')}" placeholder="키워드${i*2+1}" autocomplete="new-password">
+          <button class="input-clear-btn" onclick="clearInput('ek${i}a')" title="지우기">${ERASER_SVG}</button>
+        </div>
+        <select class="op-select" id="ekop${i}">
+          <option value="OR" ${op==='OR'?'selected':''}>OR</option>
+          <option value="AND" ${op==='AND'?'selected':''}>AND</option>
+        </select>
+        <div class="input-wrap">
+          <input type="text" id="ek${i}b" value="${kb.replace(/"/g,'&quot;')}" placeholder="키워드${i*2+2}" autocomplete="new-password">
+          <button class="input-clear-btn" onclick="clearInput('ek${i}b')" title="지우기">${ERASER_SVG}</button>
+        </div>
+        <span class="paren">)</span>
+      </div>
+      ${i < 3 ? `<div style="padding:2px 0 2px 4px;"><select class="row-op-select" id="ekrowop${i}"><option value="OR" ${(g.rowops?.[i]||'OR')==='OR'?'selected':''}>OR</option><option value="AND" ${(g.rowops?.[i]||'OR')==='AND'?'selected':''}>AND</option></select></div>` : ''}`;
+  }
+  html += `<button onclick="resetKeywords()" style="width:100%;margin-top:8px;padding:10px;background:#fff3f3;color:#c62828;border:1px solid #ffcdd2;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;">🗑 그룹${idx+1} 초기화</button>`;
+  document.getElementById('editKeywordRows').innerHTML = html;
+  document.getElementById('screen-settings').classList.remove('active');
+  document.getElementById('screen-edit').classList.add('active');
+}
+
+function closeEdit() {
+  document.getElementById('screen-edit').classList.remove('active');
+  document.getElementById('screen-settings').classList.add('active');
+  renderGroupSettingsList();
+  renderGroupTabs();
+  renderKeywordRows();
+}
+
+function resetKeywords() {
+  if (!confirm('이 그룹의 키워드를 초기화할까요?')) return;
+  const nameEl = document.getElementById('editGroupName');
+  if (nameEl) nameEl.value = `그룹 ${editingGroupIdx+1}`;
+  for (let i = 0; i < 4; i++) {
+    const a = document.getElementById(`ek${i}a`); if (a) a.value = '';
+    const b = document.getElementById(`ek${i}b`); if (b) b.value = '';
+    const op = document.getElementById(`ekop${i}`); if (op) op.value = 'OR';
+    const rowop = document.getElementById(`ekrowop${i}`); if (rowop) rowop.value = 'OR';
+  }
+  showToast('초기화됐어요.');
+}
+
+function saveEdit() {
+  const groups = getGroups();
+  const g = groups[editingGroupIdx];
+  g.name = document.getElementById('editGroupName').value.trim() || g.name;
+  g.rowops = g.rowops || ['OR','OR','OR'];
+  for (let i = 0; i < 4; i++) {
+    g.keywords[i*2] = document.getElementById(`ek${i}a`)?.value || '';
+    g.keywords[i*2+1] = document.getElementById(`ek${i}b`)?.value || '';
+    g.ops[i] = document.getElementById(`ekop${i}`)?.value || 'OR';
+    if (i < 3) g.rowops[i] = document.getElementById(`ekrowop${i}`)?.value || 'OR';
+  }
+  saveGroups(groups);
+  showToast('✅ 저장됐어요.');
+  closeEdit();
+}
+
+function toggleApiFields() { document.getElementById('apiFields').classList.toggle('open'); }
+function cancelApiFields() {
+  document.getElementById('apiFields').classList.remove('open');
+  document.getElementById('clientId').value = '';
+  document.getElementById('clientSecret').value = '';
+}
+function saveApiKeys() {
+  const id = document.getElementById('clientId').value.trim();
+  const secret = document.getElementById('clientSecret').value.trim();
+  if (!id || !secret) { showToast('ID와 Secret을 모두 입력해주세요.'); return; }
+  localStorage.setItem('naver_client_id', id);
+  localStorage.setItem('naver_client_secret', secret);
+  document.getElementById('apiDot').classList.add('active');
+  document.getElementById('apiStatusText').textContent = 'API 연결됨';
+  document.getElementById('apiFields').classList.remove('open');
+  showToast('✅ API 키가 저장되었습니다.');
+}
+
+function getSites() {
+  const saved = JSON.parse(localStorage.getItem('naver_sites') || 'null');
+  const naverDefault = { name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true };
+  if (!saved) return [naverDefault];
+  // 저장된 목록에서 naver url 항목 찾기 (fixed 여부 무관)
+  const hasNaver = saved.find(s => s.url === 'naver' || s.fixed);
+  if (!hasNaver) saved.unshift(naverDefault);
+  else { // 있으면 fixed:true 강제 보정
+    const idx = saved.findIndex(s => s.url === 'naver' || s.fixed);
+    saved[idx].fixed = true; saved[idx].name = '네이버 뉴스';
+  }
+  return saved;
+}
+function saveSites(s) { localStorage.setItem('naver_sites', JSON.stringify(s)); }
+
+function renderSites() {
+  document.getElementById('siteList').innerHTML = getSites().map((s,i) => `
+    <div class="site-item">
+      <input type="checkbox" class="site-check" ${s.enabled?'checked':''} onchange="toggleSite(${i})">
+      <div class="site-info">
+        <div class="site-name">${s.name}</div>
+        <div class="site-url" style="font-size:11px;color:var(--text-muted);">${s.fixed ? 'API 검색' : s.rssUrl ? '📡 RSS 검색' : s.crawl ? '🔍 크롤링 검색 (개편시 재등록 필요)' : '🔍 웹검색'} · ${s.domain||s.url}</div>
+      </div>
+      ${s.fixed?'':`<button class="site-del-btn" onclick="deleteSite(${i})">🗑</button>`}
+    </div>`).join('');
+}
+
+function toggleSite(i) { const s=getSites(); s[i].enabled=!s[i].enabled; saveSites(s); renderSites(); }
+function deleteSite(i) { const s=getSites(); s.splice(i,1); saveSites(s); renderSites(); showToast('삭제됐어요.'); }
+
+async function searchSite() {
+  const query = document.getElementById('siteSearchInput').value.trim();
+  if (!query) { showToast('신문사 이름을 입력해주세요.'); return; }
+  const clientId = localStorage.getItem('naver_client_id')||'';
+  const clientSecret = localStorage.getItem('naver_client_secret')||'';
+  if (!clientId||!clientSecret) { showToast('API 키를 먼저 저장해주세요.'); return; }
+
+  const el = document.getElementById('siteResults');
+  el.innerHTML = '<div class="site-result-header" style="color:var(--text-muted);">검색 중...</div>';
+  el.classList.add('open');
 
   try {
-    // 1) 네이버 뉴스 API 검색 (naverEnabled가 '0'이면 스킵)
-    const naverItems = naverEnabled === '0' ? [] : await searchNaver({ query, display: display || 100, start: start || 1, sort: sort || 'date', clientId, clientSecret });
+    const params = new URLSearchParams({query, display:20, start:1, clientId, clientSecret, type:'webkr'});
+    const res = await fetch('/api/news?' + params);
+    const data = await res.json();
 
-    // 2) 개별 사이트 검색
-    let siteItems = [];
-    if (sites) {
-      const siteList = JSON.parse(sites);
-      const siteSearches = siteList.map(site =>
-        searchNaverWeb({
-          query: `${query} site:${site.domain}`,
-          display: 20,
-          clientId,
-          clientSecret,
-          siteName: site.name,
-          siteDomain: site.domain
-        })
-      );
-      const results = await Promise.allSettled(siteSearches);
-      results.forEach(r => {
-        if (r.status === 'fulfilled') siteItems.push(...r.value);
-      });
-    }
+    const excludes = ['naver.com','google.com','daum.net','nate.com','zum.com','kakao.com',
+      'youtube.com','facebook.com','instagram.com','twitter.com','wikipedia.org','tistory.com','blogspot.com'];
 
-    // 3) 중복 제거
-    const naverTitles = naverItems.map(i => normalizeTitle(i.title));
-    const dedupedSiteItems = siteItems.filter(siteItem => {
-      const siteTitle = normalizeTitle(siteItem.title);
-      return !naverTitles.some(naverTitle => similarity(naverTitle, siteTitle) >= 0.75);
+    // 도메인별 그룹핑 → 루트 도메인만 대표로 선택 (기사 URL 제외)
+    const domainMap = new Map();
+    (data.items||[]).forEach(item => {
+      const rawUrl = item.link || '';
+      const domainFull = rawUrl.replace(/https?:\/\//, '').split('/')[0];
+      const domain = domainFull.replace(/^www\./, '');
+      if (!domain) return;
+      if (excludes.some(e => domain.includes(e))) return;
+      // 경로가 너무 긴 URL은 기사일 가능성이 높으므로 제외 (홈페이지는 경로가 짧음)
+      const path = rawUrl.replace(/https?:\/\/[^/]+/, '');
+      const pathDepth = path.split('/').filter(Boolean).length;
+      if (pathDepth > 1) return; // 경로 depth 2 이상은 기사로 판단, 스킵
+      if (!domainMap.has(domain)) {
+        const title = (item.title||'').replace(/<[^>]*>/g,'').replace(/\s*[-|:].*/, '').trim();
+        domainMap.set(domain, { domain, title, rootUrl: 'https://' + domainFull });
+      }
     });
 
-    // 4) 합치기
-    const allItems = [...naverItems, ...dedupedSiteItems];
-    return res.status(200).json({ items: allItems, total: allItems.length });
+    // domainMap이 비면 depth 제한 없이 재시도 (홈페이지 URL이 없는 경우)
+    if (domainMap.size === 0) {
+      (data.items||[]).forEach(item => {
+        const rawUrl = item.link || '';
+        const domainFull = rawUrl.replace(/https?:\/\//, '').split('/')[0];
+        const domain = domainFull.replace(/^www\./, '');
+        if (!domain) return;
+        if (excludes.some(e => domain.includes(e))) return;
+        if (!domainMap.has(domain)) {
+          const title = (item.title||'').replace(/<[^>]*>/g,'').replace(/\s*[-|:].*/, '').trim();
+          domainMap.set(domain, { domain, title, rootUrl: 'https://' + domainFull });
+        }
+      });
+    }
 
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    const items = [...domainMap.values()].slice(0, 5);
+
+    if (!items.length) {
+      el.innerHTML = '<div class="site-result-header">검색 결과가 없어요.<br><span style="font-size:12px;color:var(--text-muted);">직접 입력 탭에서 URL을 입력해주세요.</span></div>';
+      return;
+    }
+
+    el.innerHTML = '<div class="site-result-header">' + query + ' 검색 결과 — 맞는 사이트를 선택하세요</div>'
+      + items.map(function(item) {
+        var safeName = item.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        var safeUrl = item.rootUrl.replace(/'/g, "\\'");
+        return '<div class="site-result-item">'
+          + '<div style="flex:1;min-width:0;">'
+          + '<div class="site-result-name">' + (item.title||item.domain) + '</div>'
+          + '<div class="site-result-url">' + item.domain + '</div>'
+          + '</div>'
+          + '<button class="site-add-btn" onclick="addSite(\'' + safeName + '\',\'' + safeUrl + '\')">추가</button>'
+          + '</div>';
+      }).join('');
+
+  } catch(e) {
+    el.innerHTML = '<div class="site-result-header" style="color:#c62828;">검색 중 오류가 발생했어요.</div>';
   }
 }
 
-async function searchNaver({ query, display, start, sort, clientId, clientSecret }) {
-  const p = new URLSearchParams({ query, display, start, sort });
-  const r = await fetch(`https://openapi.naver.com/v1/search/news.json?${p}`, {
-    headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
-  });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err.errorMessage || `네이버 뉴스 API 오류 ${r.status}`);
-  }
-  const data = await r.json();
-  return (data.items || []).map(item => {
-    // originallink 도메인에서 신문사 추출
-    const press = extractPress(item.originallink || item.link || '');
-    return { ...item, _source: 'naver', _press: press };
-  });
+function switchSiteTab(tab) {
+  document.getElementById('siteSearchPanel').style.display = tab===1 ? 'block' : 'none';
+  document.getElementById('siteDirectPanel').style.display = tab===2 ? 'block' : 'none';
+  document.getElementById('siteTab1').style.cssText = tab===1
+    ? 'flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer;'
+    : 'flex:1;padding:10px;text-align:center;font-size:13px;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;';
+  document.getElementById('siteTab2').style.cssText = tab===2
+    ? 'flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer;'
+    : 'flex:1;padding:10px;text-align:center;font-size:13px;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;';
 }
 
-async function searchNaverWeb({ query, display, clientId, clientSecret, siteName, siteDomain }) {
-  const p = new URLSearchParams({ query, display, start: 1 });
-  const r = await fetch(`https://openapi.naver.com/v1/search/webkr.json?${p}`, {
-    headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
+async function addSiteDirect() {
+  const name = document.getElementById('siteDirectName').value.trim();
+  const url = document.getElementById('siteDirectUrl').value.trim();
+  if (!name) { showToast('신문사 이름을 입력해주세요.'); return; }
+  if (!url) { showToast('홈페이지 주소를 입력해주세요.'); return; }
+  const domain = url.replace(/https?:\/\//,'').split('/')[0];
+  if (!domain) { showToast('올바른 URL을 입력해주세요.'); return; }
+  if (domain.includes('naver.com')||domain.includes('google.com')) { showToast('이 사이트는 추가할 수 없어요.'); return; }
+  const sites = getSites();
+  if (sites.find(s=>s.domain===domain||s.url===url)) { showToast('이미 추가된 사이트예요.'); return; }
+  await detectAndAddSite(name, url, domain, () => {
+    document.getElementById('siteDirectName').value='';
+    document.getElementById('siteDirectUrl').value='';
   });
-  if (!r.ok) return [];
-  const data = await r.json();
-  return (data.items || [])
-    .filter(item => (item.link || '').includes(siteDomain))
-    .map(item => ({
-      title: item.title || '',
-      link: item.link || '',
-      originallink: item.link || '',
-      description: item.description || '',
-      pubDate: item.pubDate || new Date().toUTCString(),
-      _source: siteName,
-      _siteDomain: siteDomain
-    }));
 }
+async function detectAndAddSite(name, url, domain, onDone) {
+  const clientId = localStorage.getItem('naver_client_id')||'';
+  const clientSecret = localStorage.getItem('naver_client_secret')||'';
+  showToast('RSS 확인 중...');
 
-function extractPress(url) {
+  let rssUrl = null;
   try {
-    const domain = url.replace(/https?:\/\//, '').split('/')[0].replace(/^www\./, '');
-    // 주요 언론사 도메인 매핑
-    const map = {
-      'inews24.com': '아이뉴스24',
-      'greened.kr': '그린경제',
-      'hankyung.com': '한국경제',
-      'chosun.com': '조선일보',
-      'joongang.co.kr': '중앙일보',
-      'donga.com': '동아일보',
-      'hani.co.kr': '한겨레',
-      'mk.co.kr': '매일경제',
-      'sedaily.com': '서울경제',
-      'etnews.com': '전자신문',
-      'yonhapnews.co.kr': '연합뉴스',
-      'yna.co.kr': '연합뉴스',
-      'newsis.com': '뉴시스',
-      'news1.kr': '뉴스1',
-      'mt.co.kr': '머니투데이',
-      'bizwatch.co.kr': '비즈워치',
-      'the-bell.co.kr': '더벨',
-      'insurancejournal.co.kr': '보험저널',
-      'insjournal.co.kr': '보험저널',
-      'newsport.co.kr': '뉴스포트',
-      'fntimes.com': '한국금융신문',
-      'kfnews.co.kr': '한국금융',
-    };
-    return map[domain] || domain;
+    const params = new URLSearchParams({query:'_', clientId, clientSecret, type:'rss_detect', siteUrl: url});
+    const res = await fetch('/api/news?' + params);
+    const data = await res.json();
+    rssUrl = data.rssUrl || null;
+  } catch(e) {}
+
+  const sites = getSites();
+  if (rssUrl) {
+    // RSS 있음 → 바로 추가
+    sites.push({name, url, domain, rssUrl, enabled:true, fixed:false});
+    saveSites(sites); renderSites();
+    if (onDone) onDone();
+    showToast(`✅ "${name}" 추가됐어요. (RSS)`);
+  } else {
+    // RSS 없음 → 크롤링 선택 안내
+    showToast(`"${name}"은 RSS 미지원 — 크롤링으로 추가됐어요.`);
+    sites.push({name, url, domain, rssUrl: null, crawl: true, enabled:true, fixed:false});
+    saveSites(sites); renderSites();
+    if (onDone) onDone();
+  }
+}
+
+async function addSite(name, url) {
+  const domain = url.replace(/https?:\/\//,'').split('/')[0];
+  if (domain.includes('naver.com')||domain.includes('google.com')) { showToast('이 사이트는 추가할 수 없어요.'); return; }
+  const sites = getSites();
+  if (sites.find(s=>s.url===url||s.domain===domain)) { showToast('이미 추가된 사이트예요.'); return; }
+  await detectAndAddSite(name, url, domain, () => {
+    document.getElementById('siteResults').classList.remove('open');
+    document.getElementById('siteSearchInput').value='';
+  });
+}
+
+function buildRowQuery(i) {
+  const a = document.getElementById(`k${i}a`)?.value.trim()||'';
+  const b = document.getElementById(`k${i}b`)?.value.trim()||'';
+  const op = document.getElementById(`kop${i}`)?.value||'OR';
+  if (!a&&!b) return [];
+  if (!a) return [b];
+  if (!b) return [a];
+  if (op==='AND') return [`${a} ${b}`];
+  return [a,b];
+}
+
+async function searchRow(i) {
+  const q = buildRowQuery(i);
+  if (!q.length) { showToast('키워드를 입력해주세요.'); return; }
+  await runSearch(q);
+}
+
+async function searchAll() {
+  const queries=[];
+  for (let i=0;i<4;i++) {
+    const rowQueries = buildRowQuery(i);
+    rowQueries.forEach(q=>{if(q&&!queries.includes(q))queries.push(q);});
+  }
+  if (!queries.length) { showToast('키워드를 입력해주세요.'); return; }
+  await runSearch(queries);
+}
+
+async function doDirectSearch() {
+  const kw = document.getElementById('keyword').value.trim();
+  if (!kw) { showError('키워드를 입력해주세요.'); return; }
+  await runSearch([kw]);
+}
+
+async function runSearch(queries) {
+  const clientId=localStorage.getItem('naver_client_id')||'';
+  const clientSecret=localStorage.getItem('naver_client_secret')||'';
+  showError('');
+  if (!clientId||!clientSecret) { switchTab('settings'); return showToast('API 키를 먼저 저장해주세요.'); }
+  selectedIds.clear(); articles=[]; window._siteStatuses = {};
+  updateCountUI();
+  document.getElementById('listHeader').classList.remove('visible');
+  document.getElementById('articleList').innerHTML=`<div style="background:white;">${Array(6).fill(`
+    <div style="display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f0f0;">
+      <div class="skeleton" style="width:18px;height:18px;flex-shrink:0;border-radius:3px;margin-top:2px;"></div>
+      <div style="flex:1;"><div class="skeleton" style="height:38px;margin-bottom:8px;"></div><div class="skeleton" style="height:11px;width:40%;"></div></div>
+    </div>`).join('')}</div>`;
+  try {
+    const {start,end}=getDateRange();
+    const allItems=[]; const seenTitles=new Set();
+
+    // 활성화된 개별 사이트 목록 (naver fixed 제외)
+    const activeSites=getSites().filter(s=>s.enabled&&!s.fixed&&s.domain);
+    const sitesParam=activeSites.length?JSON.stringify(activeSites):null;
+    // 네이버 뉴스 활성화 여부
+    const naverEnabled=getSites().find(s=>s.fixed)?.enabled !== false;
+
+    for (const query of queries) {
+      const params=new URLSearchParams({query,display:getDisplayCount(),start:1,sort:sortVal,clientId,clientSecret,naverEnabled:naverEnabled?'1':'0'});
+      if (sitesParam) params.set('sites', sitesParam);
+      const res=await fetch(`/api/news?${params}`);
+      if (!res.ok) { const err=await res.json().catch(()=>({})); throw new Error(err.error||`오류 ${res.status}`); }
+      const data=await res.json();
+      (data.items||[]).forEach(item=>{
+        const title=stripHtml(item.title);
+        if (!seenTitles.has(title)) { seenTitles.add(title); allItems.push(item); }
+      });
+      // 사이트 상태 누적
+      if (data.siteStatuses) data.siteStatuses.forEach(s => {
+        if (!window._siteStatuses) window._siteStatuses = {};
+        if (!s.ok) window._siteStatuses[s.name] = s;
+      });
+    }
+    articles=allItems
+      .filter(item=>isInRange(item.pubDate,start,end))
+      .sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate))
+      .map((item,i)=>({
+        id:i,
+        title:stripHtml(item.title),
+        link:item.originallink||item.link,
+        date:formatDate(item.pubDate),
+        source:item._source||'naver',
+        press:item._press||'',
+        importance: null
+      }));
+    renderList();
+  } catch(e) {
+    showError(e.message||'검색 중 오류가 발생했습니다.');
+    document.getElementById('articleList').innerHTML=`<div class="no-results">결과를 불러오지 못했습니다.</div>`;
+  }
+}
+
+function renderList() {
+  const list=document.getElementById('articleList');
+  const header=document.getElementById('listHeader');
+  if (!articles.length) { list.innerHTML=`<div class="no-results">해당 기간에 기사가 없습니다.</div>`; header.classList.remove('visible'); return; }
+  header.classList.add('visible');
+  document.getElementById('articleCount').textContent=articles.length;
+  updateCountUI();
+  // 사이트 상태 알림 (크롤링 실패 등)
+  const statuses = window._siteStatuses || {};
+  const failedSites = Object.values(statuses).filter(s => !s.ok);
+  const statusHtml = failedSites.length ? `
+    <div style="background:#fff8e1;border-top:1px solid #ffe082;padding:10px 16px;">
+      ${failedSites.map(s => `
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;">
+          <span>⚠️</span>
+          <span style="color:var(--text-sub);font-weight:600;">${s.name}</span>
+          <span style="color:var(--text-muted);">· ${s.type==='crawl'?'크롤링':'RSS'} 실패 — 확인 필요</span>
+        </div>`).join('')}
+    </div>` : '';
+
+  list.innerHTML=`<div style="background:white;">`+articles.map(a=>`
+    <div class="article-item" id="item-${a.id}" onclick="openArticle(${a.id})">
+      <input type="checkbox" ${selectedIds.has(a.id)?'checked':''} onclick="event.stopPropagation();toggleCheck(${a.id})">
+      <div class="article-info">
+        <div class="article-title">${a.title}</div>
+        <div class="article-meta">
+          <span class="article-source">${a.source === 'naver' ? '네이버' : a.source}</span>
+          ${a.press && a.press !== (a.source === 'naver' ? '네이버' : a.source) ? `<span style="font-size:11px;color:var(--text-sub);">${a.press}</span>` : ''}
+          <span class="article-date">${a.date}</span>
+        </div>
+      </div>
+      <button class="importance-btn ${a.importance==='star'?'active':''}" onclick="event.stopPropagation();setImportance(${a.id},'star')" title="중요">⭐</button>
+      <button class="importance-btn ${a.importance==='check'?'active':''}" onclick="event.stopPropagation();setImportance(${a.id},'check')" title="점검">🔍</button>
+      <button class="article-share-btn" onclick="event.stopPropagation();shareOne(${a.id})">📤</button>
+    </div>`).join('')+`</div>`+statusHtml;
+}
+
+function openArticle(id) { window.open(articles[id].link,'_blank'); }
+
+function setImportance(id, type) {
+  const a = articles[id];
+  a.importance = a.importance === type ? null : type;
+  // 해당 아이템만 버튼 업데이트
+  const item = document.getElementById('item-'+id);
+  if (item) {
+    item.querySelectorAll('.importance-btn').forEach(btn => btn.classList.remove('active'));
+    if (a.importance) {
+      const idx = a.importance === 'star' ? 0 : 1;
+      item.querySelectorAll('.importance-btn')[idx]?.classList.add('active');
+    }
+  }
+}
+
+// 공유 이력 저장
+function saveToHistory(items) {
+  const history = JSON.parse(localStorage.getItem('share_history') || '[]');
+  const now = new Date().toISOString();
+  items.forEach(a => {
+    history.unshift({
+      date: now,
+      importance: a.importance || 'normal',
+      source: a.source,
+      title: a.title,
+      link: a.link
+    });
+  });
+  // 최대 500개 유지
+  if (history.length > 500) history.splice(500);
+  localStorage.setItem('share_history', JSON.stringify(history));
+}
+
+// 이력 화면 렌더링
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem('share_history') || '[]');
+  const el = document.getElementById('historyList');
+  if (!history.length) {
+    el.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted);font-size:13px;">공유한 기사가 없어요.</div>';
+    return;
+  }
+
+  // 날짜별 그룹핑
+  const groups = {};
+  history.forEach(item => {
+    const d = new Date(item.date);
+    const today = new Date();
+    const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
+    let label;
+    if (d.toDateString() === today.toDateString()) label = '오늘';
+    else if (d.toDateString() === yesterday.toDateString()) label = '어제';
+    else label = `${d.getMonth()+1}/${d.getDate()}`;
+    if (!groups[label]) groups[label] = [];
+    groups[label].push(item);
+  });
+
+  const icon = {star:'⭐', check:'🔍', normal:'📰'};
+  let html = '';
+  Object.entries(groups).forEach(([label, items]) => {
+    html += `<div class="history-date-group">${label} · ${items.length}건</div>`;
+    items.forEach((item, i) => {
+      html += `<div class="history-item">
+        <div class="history-icon">${icon[item.importance]||'📰'}</div>
+        <div class="history-info">
+          <div class="history-title">${item.title}</div>
+          <div class="history-meta">${item.source} · ${formatDate(item.date)}</div>
+        </div>
+        <button class="history-del-btn" onclick="deleteHistory('${label}',${i})">✕</button>
+      </div>`;
+    });
+  });
+  el.innerHTML = html;
+}
+
+function deleteHistory(label, idx) {
+  const history = JSON.parse(localStorage.getItem('share_history') || '[]');
+  // 해당 날짜 그룹의 idx번째 항목 찾아서 삭제
+  const today = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
+  let count = 0;
+  for (let i = 0; i < history.length; i++) {
+    const d = new Date(history[i].date);
+    let lbl;
+    if (d.toDateString() === today.toDateString()) lbl = '오늘';
+    else if (d.toDateString() === yesterday.toDateString()) lbl = '어제';
+    else lbl = `${d.getMonth()+1}/${d.getDate()}`;
+    if (lbl === label) {
+      if (count === idx) { history.splice(i, 1); break; }
+      count++;
+    }
+  }
+  localStorage.setItem('share_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function downloadHistoryCSV() {
+  const history = JSON.parse(localStorage.getItem('share_history') || '[]');
+  if (!history.length) { showToast('이력이 없어요.'); return; }
+  const header = '중요도,출처,제목,URL,공유일시';
+  const iconMap = {star:'⭐중요', check:'🔍점검', normal:'📰일반'};
+  const rows = history.map(h =>
+    [iconMap[h.importance]||'📰일반', h.source, '"'+h.title.replace(/"/g,'""')+'"', h.link, formatDate(h.date)].join(',')
+  );
+  const csv = '﻿' + header + '\n' + rows.join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '공유이력_'+new Date().toISOString().split('T')[0]+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ CSV 다운로드 완료!');
+}
+function toggleCheck(id) { if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id); updateCountUI(); }
+function updateCountUI() {
+  const n=selectedIds.size;
+  document.getElementById('selectedCount').textContent=`${n}개 선택`;
+  const btn=document.getElementById('copyBtn');
+  btn.disabled=n===0; btn.textContent=`URL 복사 (${n}개)`;
+}
+function toggleSelectAll() {
+  if (selectedIds.size===articles.length) selectedIds.clear(); else articles.forEach(a=>selectedIds.add(a.id));
+  renderList();
+}
+async function shareOne(id) {
+  const a=articles[id];
+  if (navigator.share) { try { await navigator.share({title:a.title,url:a.link}); } catch(e) {} }
+  else { navigator.clipboard.writeText(`📰 ${a.title}\n${a.link}`).then(()=>showToast('✅ 복사됐어요!')); }
+}
+function selectSort(el) {
+  document.querySelectorAll('#sortGroup .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active'); sortVal=el.dataset.val; localStorage.setItem('naver_sort',sortVal);
+}
+function selectPeriod(el) {
+  document.querySelectorAll('#periodGroup .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active'); periodVal=el.dataset.val; localStorage.setItem('naver_period',periodVal);
+  document.getElementById('dateRange').classList.toggle('open',periodVal==='custom');
+}
+function selectDisplay(el) {
+  document.querySelectorAll('#displayGroup .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  displayVal = el.dataset.val;
+  localStorage.setItem('naver_display', displayVal);
+  document.getElementById('displayCustomRow').style.display = displayVal === 'custom' ? 'flex' : 'none';
+}
+function saveDisplayVal() {
+  const v = document.getElementById('displayCustomVal').value;
+  if (v) localStorage.setItem('naver_display_custom', v);
+}
+function getDisplayCount() {
+  if (displayVal === '0') return 100; // 무제한 = 네이버 API 최대값 100
+  if (displayVal === 'custom') {
+    const v = parseInt(localStorage.getItem('naver_display_custom') || '100');
+    return Math.min(Math.max(v, 1), 1000);
+  }
+  return parseInt(displayVal) || 100;
+}
+function getDateRange() {
+  if (periodVal==='all') return {start:null,end:null};
+  if (periodVal==='custom') {
+    const s=document.getElementById('startDate').value;
+    const e=document.getElementById('endDate').value;
+    localStorage.setItem('naver_start',s); localStorage.setItem('naver_end',e);
+    return {start:s?new Date(s).getTime():null,end:e?new Date(e+'T23:59:59').getTime():null};
+  }
+  const map={'1h':1/24,'1d':1,'1w':7,'1m':30,'3m':90};
+  const now=new Date();
+  return {start:now.getTime()-(map[periodVal]||1)*86400000,end:now.getTime()};
+}
+function isInRange(pubDate,start,end) {
+  const d=new Date(pubDate).getTime();
+  if (start&&d<start) return false;
+  if (end&&d>end) return false;
+  return true;
+}
+function stripHtml(html) {
+  return html.replace(/<[^>]*>/g,'').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#\d+;/g,'');
+}
+function formatDate(pubDate) {
+  try {
+    const d=new Date(pubDate);
+    return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   } catch { return ''; }
 }
-
-function normalizeTitle(title) {
-  return title.replace(/<[^>]*>/g, '').replace(/[^\w\uAC00-\uD7A3]/g, '').toLowerCase().trim();
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
 }
-
-function similarity(a, b) {
-  if (!a || !b) return 0;
-  if (a === b) return 1;
-  const shorter = a.length < b.length ? a : b;
-  const longer  = a.length < b.length ? b : a;
-  let matches = 0;
-  for (let i = 0; i < shorter.length; i++) {
-    if (longer.includes(shorter[i])) matches++;
-  }
-  return matches / longer.length;
+function showError(msg) {
+  const el=document.getElementById('errorMsg');
+  el.textContent=msg; el.style.display=msg?'block':'none';
 }
+function copyUrls() {
+  if (!selectedIds.size) return;
+  const importanceIcon = {star:'⭐', check:'🔍', normal:'📰'};
+  const selectedArticles = [...selectedIds].map(id => articles[id]);
+  // 신문사별로 묶기
+  const pressGroups = {};
+  selectedArticles.forEach(a => {
+    const pressName = a.press || (a.source === 'naver' ? '네이버' : a.source);
+    if (!pressGroups[pressName]) pressGroups[pressName] = [];
+    pressGroups[pressName].push(a);
+  });
+
+  const urls = Object.entries(pressGroups).map(([press, items]) => {
+    const lines = items.map(a => {
+      const icon = importanceIcon[a.importance] || '📰';
+      return `${icon} ${press}\n${a.title}\n${a.link}`;
+    }).join('\n\n');
+    return lines;
+  }).join('\n\n') + '\n.';
+  // 이력 저장
+  saveToHistory(selectedArticles);
+  const share=()=>{if(navigator.share)navigator.share({text:urls}).catch(()=>{});};
+  navigator.clipboard.writeText(urls)
+    .then(()=>{showToast(`✅ ${selectedIds.size}개 복사 완료!`);share();})
+    .catch(()=>{
+      const ta=document.createElement('textarea');
+      ta.value=urls; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      showToast(`✅ ${selectedIds.size}개 복사 완료!`); share();
+    });
+}
+</script>
+</body>
+</html>
