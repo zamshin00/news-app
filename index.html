@@ -109,6 +109,9 @@ input[type="date"] { font-size: 12px; }
 .site-name { font-size: 14px; color: var(--text); }
 .site-url { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 .site-del-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 18px; }
+.company-order-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+.company-order-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text-sub); cursor: pointer; padding: 1px 6px; font-size: 10px; border-radius: 4px; line-height: 1.4; }
+.company-order-btn:disabled { opacity: 0.25; cursor: default; }
 .site-search-row { display: flex; gap: 8px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .site-search-row input { flex: 1; }
 .site-results { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin: 0 16px 8px; overflow: hidden; display: none; }
@@ -195,9 +198,9 @@ input[type="date"] { font-size: 12px; }
         <button class="pill" data-val="all" onclick="selectPeriod(this)">전체</button>
         <button class="pill" data-val="1h" onclick="selectPeriod(this)">1시간</button>
         <button class="pill" data-val="1d" onclick="selectPeriod(this)">1일</button>
+        <button class="pill" data-val="3d" onclick="selectPeriod(this)">3일</button>
         <button class="pill" data-val="1w" onclick="selectPeriod(this)">1주</button>
         <button class="pill" data-val="1m" onclick="selectPeriod(this)">1개월</button>
-        <button class="pill" data-val="3m" onclick="selectPeriod(this)">3개월</button>
         <button class="pill" data-val="custom" onclick="selectPeriod(this)">직접입력</button>
       </div>
       <div class="date-range" id="dateRange">
@@ -298,6 +301,7 @@ input[type="date"] { font-size: 12px; }
   <div class="settings-section-title" style="margin-top:8px;padding-top:16px;border-top:4px solid var(--bg);">🌐 검색 사이트</div>
   <div id="siteList"></div>
 
+
   <!-- 추가 방법 탭 -->
   <div style="display:flex;border-bottom:1px solid var(--border);background:var(--surface);margin-top:4px;">
     <div id="siteTab1" onclick="switchSiteTab(1)" style="flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer;">🔍 이름으로 검색</div>
@@ -354,12 +358,21 @@ let editingGroupIdx = -1;
 
 const GROUP_COLORS = ['#03C75A','#378ADD','#D85A30','#9B59B6','#E67E22'];
 
-const DEFAULT_GROUPS = Array.from({length:5}, (_,i) => ({
-  name: `그룹 ${i+1}`,
-  keywords: ['','','','','','','',''],
-  ops: ['OR','OR','OR','OR'],
-  rowops: ['OR','OR','OR']
-}));
+const DEFAULT_GROUPS = [
+  ...Array.from({length:4}, (_,i) => ({
+    name: `그룹 ${i+1}`,
+    keywords: ['','','','','','','',''],
+    ops: ['OR','OR','OR','OR'],
+    rowops: ['OR','OR','OR']
+  })),
+  { name: '보험사', isCompanyGroup: true }
+];
+
+// 손보사(DB손보 제외) · 생보사 — 가나다순. 사용자가 설정 화면에서 자유롭게 추가/삭제 가능한 기본값
+const DEFAULT_INSURANCE_COMPANIES = {
+  '손보사': ['농협손보','롯데손보','메리츠화재','삼성화재','서울보증','신한EZ손보','카카오페이손보','코리안리','하나손보','한화손보','현대해상','흥국화재','AIG손보','AXA손보','KB손보'],
+  '생보사': ['교보생명','동양생명','라이나생명','메트라이프생명','미래에셋생명','삼성생명','신한라이프','처브라이프','푸본현대생명','하나생명','한화생명','흥국생명','ABL생명','AIA생명','BNP파리바 카디프생명','DB생명','iM라이프','KB라이프','KDB생명','NH농협생명']
+};
 
 (function init() {
   const id = localStorage.getItem('naver_client_id') || '';
@@ -371,15 +384,32 @@ const DEFAULT_GROUPS = Array.from({length:5}, (_,i) => ({
     document.getElementById('apiFields').classList.add('open');
   }
 
-  // naver_sites 강제 보정: 네이버가 없으면 추가, 있으면 fixed:true 보정 후 재저장
+  // naver_sites 강제 보정 + 기본 보험 신문사 자동 추가
   const naverDefault = { name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true };
+  const DEFAULT_SITES = [
+    { name: '뉴스포트',    url: 'https://www.newsport.co.kr',  domain: 'newsport.co.kr',  rssUrl: 'https://www.newsport.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '보험매일',    url: 'https://www.fins.co.kr',      domain: 'fins.co.kr',      rssUrl: 'https://www.fins.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '대한금융신문', url: 'https://www.kbanker.co.kr',   domain: 'kbanker.co.kr',   rssUrl: 'https://www.kbanker.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '보험저널',    url: 'https://www.insjournal.co.kr', domain: 'insjournal.co.kr', rssUrl: 'https://www.insjournal.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '보험일보',    url: 'http://www.insura.net',        domain: 'insura.net',       rssUrl: null, crawl: true, enabled: true, fixed: false },
+    { name: '한국보험신문', url: 'https://www.insnews.co.kr',   domain: 'insnews.co.kr',   rssUrl: 'https://www.insnews.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '보험신보',    url: 'https://www.insweek.co.kr',   domain: 'insweek.co.kr',   rssUrl: 'https://www.insweek.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '한국금융신문', url: 'https://www.fntimes.com',     domain: 'fntimes.com',     rssUrl: null, crawl: true, enabled: true, fixed: false },
+  ];
+
   const savedSites = JSON.parse(localStorage.getItem('naver_sites') || 'null');
   if (!savedSites) {
-    localStorage.setItem('naver_sites', JSON.stringify([naverDefault]));
+    // 첫 실행: 네이버 + 기본 사이트 목록 저장
+    localStorage.setItem('naver_sites', JSON.stringify([naverDefault, ...DEFAULT_SITES]));
   } else {
+    // 네이버 보정
     const hasNaver = savedSites.find(s => s.url === 'naver' || s.fixed);
     if (!hasNaver) savedSites.unshift(naverDefault);
     else { const ni = savedSites.findIndex(s => s.url === 'naver' || s.fixed); savedSites[ni].fixed = true; savedSites[ni].name = '네이버 뉴스'; }
+    // 기본 사이트 중 없는 것만 추가
+    DEFAULT_SITES.forEach(def => {
+      if (!savedSites.find(s => s.domain === def.domain)) savedSites.push(def);
+    });
     localStorage.setItem('naver_sites', JSON.stringify(savedSites));
   }
 
@@ -397,6 +427,7 @@ const DEFAULT_GROUPS = Array.from({length:5}, (_,i) => ({
   renderGroupTabs();
   renderKeywordRows();
   renderGroupSettingsList();
+  renderCompanyManageList();
   renderSites();
 })();
 
@@ -412,9 +443,112 @@ function switchTab(tab) {
 }
 
 function getGroups() {
-  return JSON.parse(localStorage.getItem('naver_groups_v3') || 'null') || DEFAULT_GROUPS;
+  let groups = JSON.parse(localStorage.getItem('naver_groups_v3') || 'null') || DEFAULT_GROUPS;
+  // 그룹5를 보험사 체크리스트 구조로 마이그레이션 (구버전 데이터 대응)
+  if (!groups[4] || !groups[4].isCompanyGroup) {
+    groups[4] = { name: '보험사', isCompanyGroup: true };
+    saveGroups(groups);
+  }
+  return groups;
 }
 function saveGroups(g) { localStorage.setItem('naver_groups_v3', JSON.stringify(g)); }
+
+function getSelectedCompanies() {
+  return JSON.parse(localStorage.getItem('naver_group5_selected') || '[]');
+}
+function saveSelectedCompanies(arr) {
+  localStorage.setItem('naver_group5_selected', JSON.stringify(arr));
+}
+
+function getCompanies() {
+  const saved = JSON.parse(localStorage.getItem('naver_group5_companies') || 'null');
+  if (saved && saved['손보사'] && saved['생보사']) return saved;
+  const fresh = JSON.parse(JSON.stringify(DEFAULT_INSURANCE_COMPANIES));
+  saveCompanies(fresh);
+  return fresh;
+}
+function saveCompanies(obj) {
+  localStorage.setItem('naver_group5_companies', JSON.stringify(obj));
+}
+
+function addCompany() {
+  const category = document.getElementById('companyAddCategory').value;
+  const name = document.getElementById('companyAddName').value.trim();
+  if (!name) { showToast('회사명을 입력해주세요.'); return; }
+  const companies = getCompanies();
+  if (companies[category].includes(name)) { showToast('이미 있는 회사예요.'); return; }
+  companies[category].push(name);
+  saveCompanies(companies);
+  document.getElementById('companyAddName').value = '';
+  renderCompanyManageList();
+  refreshCompanyChecklistIfOpen();
+  showToast(`✅ "${name}" 추가됐어요.`);
+}
+
+function moveCompany(category, index, dir) {
+  const companies = getCompanies();
+  const arr = companies[category];
+  const newIndex = index + dir;
+  if (newIndex < 0 || newIndex >= arr.length) return;
+  [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+  saveCompanies(companies);
+  renderCompanyManageList();
+  refreshCompanyChecklistIfOpen();
+}
+
+function deleteCompany(category, index) {
+  const companies = getCompanies();
+  const removed = companies[category].splice(index, 1)[0];
+  saveCompanies(companies);
+  // 선택돼 있었으면 선택 목록에서도 제거
+  const selected = getSelectedCompanies().filter(n => n !== removed);
+  saveSelectedCompanies(selected);
+  renderCompanyManageList();
+  refreshCompanyChecklistIfOpen();
+  showToast('삭제됐어요.');
+}
+
+function refreshCompanyChecklistIfOpen() {
+  // 검색 탭에서 그룹5(보험사)를 보고 있으면 즉시 반영
+  const groups = getGroups();
+  if (currentGroupIdx !== -1 && groups[currentGroupIdx]?.isCompanyGroup) {
+    renderKeywordRows();
+  }
+}
+
+function resetCompanies() {
+  if (!confirm('보험사 목록을 기본값으로 초기화할까요? 직접 추가/삭제/순서변경한 내용이 사라져요.')) return;
+  saveCompanies(JSON.parse(JSON.stringify(DEFAULT_INSURANCE_COMPANIES)));
+  renderCompanyManageList();
+  refreshCompanyChecklistIfOpen();
+  showToast('초기화됐어요.');
+}
+
+function renderCompanyManageList() {
+  const el = document.getElementById('companyManageList');
+  if (!el) return;
+  const companies = getCompanies();
+  let html = '';
+  Object.entries(companies).forEach(([category, names]) => {
+    html += `<div style="padding:8px 16px 2px;font-size:11px;font-weight:700;color:var(--text-muted);">${category} (${names.length})</div>`;
+    names.forEach((name, i) => {
+      const isFirst = i === 0;
+      const isLast = i === names.length - 1;
+      html += `
+        <div class="site-item">
+          <div class="company-order-btns">
+            <button class="company-order-btn" ${isFirst?'disabled':''} onclick="moveCompany('${category}',${i},-1)" title="위로">▲</button>
+            <button class="company-order-btn" ${isLast?'disabled':''} onclick="moveCompany('${category}',${i},1)" title="아래로">▼</button>
+          </div>
+          <div class="site-info">
+            <div class="site-name">${name}</div>
+          </div>
+          <button class="site-del-btn" onclick="deleteCompany('${category}',${i})">🗑</button>
+        </div>`;
+    });
+  });
+  el.innerHTML = html;
+}
 
 function renderGroupTabs() {
   const groups = getGroups();
@@ -437,6 +571,10 @@ function renderKeywordRows() {
   if (currentGroupIdx === -1) return;
   const g = getGroups()[currentGroupIdx];
   const container = document.getElementById('keywordRows');
+  if (g.isCompanyGroup) {
+    renderCompanyChecklist(container);
+    return;
+  }
   let html = '';
   for (let i = 0; i < 4; i++) {
     const ka = g.keywords[i*2] || '';
@@ -467,6 +605,46 @@ function renderKeywordRows() {
   container.innerHTML = html;
 }
 
+function renderCompanyChecklist(container) {
+  const selected = new Set(getSelectedCompanies());
+  const companies = getCompanies();
+  let html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+  Object.entries(companies).forEach(([category, names]) => {
+    html += `<div class="section-label" style="margin-top:2px;">${category} (${names.length})</div>`;
+    html += `<div class="pill-group">`;
+    names.forEach(name => {
+      const safeName = name.replace(/'/g, "\\'");
+      html += `<button class="pill ${selected.has(name)?'active':''}" onclick="toggleCompany('${safeName}')">${name}</button>`;
+    });
+    html += `</div>`;
+  });
+  const selCount = selected.size;
+  html += `<div style="display:flex;gap:6px;margin-top:4px;">
+      <button class="search-all-btn" style="flex:1;" onclick="searchSelectedCompanies()">선택 회사 검색 (${selCount}개, OR)</button>
+      <button class="gray-btn" style="flex-shrink:0;padding:10px 14px;" onclick="clearSelectedCompanies()">선택 초기화</button>
+    </div>`;
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function toggleCompany(name) {
+  const selected = new Set(getSelectedCompanies());
+  if (selected.has(name)) selected.delete(name); else selected.add(name);
+  saveSelectedCompanies([...selected]);
+  renderKeywordRows();
+}
+
+function clearSelectedCompanies() {
+  saveSelectedCompanies([]);
+  renderKeywordRows();
+}
+
+async function searchSelectedCompanies() {
+  const selected = getSelectedCompanies();
+  if (!selected.length) { showToast('회사를 선택해주세요.'); return; }
+  await runSearch(selected);
+}
+
 function clearInput(id) {
   const el = document.getElementById(id);
   if (el) { el.value = ''; el.focus(); }
@@ -475,6 +653,16 @@ function clearInput(id) {
 function renderGroupSettingsList() {
   const groups = getGroups();
   document.getElementById('groupSettingsList').innerHTML = groups.map((g,i) => {
+    if (g.isCompanyGroup) {
+      const totalCount = Object.values(getCompanies()).reduce((sum, arr) => sum + arr.length, 0);
+      return `
+        <div class="group-list-item" onclick="openEdit(${i})">
+          <div class="group-color-dot" style="background:${GROUP_COLORS[i%GROUP_COLORS.length]}"></div>
+          <div class="group-list-name">${g.name}</div>
+          <span class="group-list-sub">회사 ${totalCount}개</span>
+          <span class="group-list-arrow">›</span>
+        </div>`;
+    }
     const count = g.keywords.filter(k=>k.trim()).length;
     return `
       <div class="group-list-item" onclick="openEdit(${i})">
@@ -487,8 +675,20 @@ function renderGroupSettingsList() {
 }
 
 function openEdit(idx) {
+  const target = getGroups()[idx];
   editingGroupIdx = idx;
-  const g = getGroups()[idx];
+  if (target.isCompanyGroup) {
+    document.getElementById('editGroupName').style.display = 'none';
+    document.getElementById('editSaveBtn').style.display = 'none';
+    document.getElementById('editTitle').textContent = '보험사 목록 관리';
+    renderCompanyEditScreen();
+    document.getElementById('screen-settings').classList.remove('active');
+    document.getElementById('screen-edit').classList.add('active');
+    return;
+  }
+  document.getElementById('editGroupName').style.display = '';
+  document.getElementById('editSaveBtn').style.display = '';
+  const g = target;
   document.getElementById('editGroupName').value = g.name;
   document.getElementById('editTitle').textContent = g.name;
   let html = '';
@@ -519,6 +719,40 @@ function openEdit(idx) {
   document.getElementById('editKeywordRows').innerHTML = html;
   document.getElementById('screen-settings').classList.remove('active');
   document.getElementById('screen-edit').classList.add('active');
+}
+
+function renderCompanyEditScreen() {
+  const companies = getCompanies();
+  let html = '';
+  Object.entries(companies).forEach(([category, names]) => {
+    html += `<div class="section-label" style="margin:10px 0 4px;">${category} (${names.length})</div>`;
+    names.forEach((name, i) => {
+      const isFirst = i === 0;
+      const isLast = i === names.length - 1;
+      html += `
+        <div class="site-item">
+          <div class="company-order-btns">
+            <button class="company-order-btn" ${isFirst?'disabled':''} onclick="moveCompany('${category}',${i},-1)" title="위로">▲</button>
+            <button class="company-order-btn" ${isLast?'disabled':''} onclick="moveCompany('${category}',${i},1)" title="아래로">▼</button>
+          </div>
+          <div class="site-info">
+            <div class="site-name">${name}</div>
+          </div>
+          <button class="site-del-btn" onclick="deleteCompany('${category}',${i})">🗑</button>
+        </div>`;
+    });
+  });
+  html += `
+    <div class="site-search-row" style="padding-left:0;padding-right:0;">
+      <select id="companyAddCategory" style="flex-shrink:0;width:90px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);">
+        <option value="손보사">손보사</option>
+        <option value="생보사">생보사</option>
+      </select>
+      <input type="text" id="companyAddName" placeholder="회사명 입력... (예: 캐롯손보)" autocomplete="new-password" onkeydown="if(event.key==='Enter') addCompany()">
+      <button class="green-btn" style="white-space:nowrap;padding:8px 14px;" onclick="addCompany()">추가</button>
+    </div>
+    <button onclick="resetCompanies()" style="width:100%;margin-top:8px;padding:10px;background:#fff3f3;color:#c62828;border:1px solid #ffcdd2;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;">🗑 기본 목록으로 초기화</button>`;
+  document.getElementById('editKeywordRows').innerHTML = html;
 }
 
 function closeEdit() {
@@ -597,7 +831,7 @@ function renderSites() {
       <input type="checkbox" class="site-check" ${s.enabled?'checked':''} onchange="toggleSite(${i})">
       <div class="site-info">
         <div class="site-name">${s.name}</div>
-        <div class="site-url" style="font-size:11px;color:var(--text-muted);">${s.fixed ? 'API 검색' : (s.domain||s.url)}</div>
+        <div class="site-url" style="font-size:11px;color:var(--text-muted);">${s.fixed ? 'API 검색' : s.rssUrl ? '📡 RSS 검색' : s.crawl ? '🔍 크롤링 검색 (개편시 재등록 필요)' : '🔍 웹검색'} · ${s.domain||s.url}</div>
       </div>
       ${s.fixed?'':`<button class="site-del-btn" onclick="deleteSite(${i})">🗑</button>`}
     </div>`).join('');
@@ -694,7 +928,7 @@ function switchSiteTab(tab) {
     : 'flex:1;padding:10px;text-align:center;font-size:13px;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;';
 }
 
-function addSiteDirect() {
+async function addSiteDirect() {
   const name = document.getElementById('siteDirectName').value.trim();
   const url = document.getElementById('siteDirectUrl').value.trim();
   if (!name) { showToast('신문사 이름을 입력해주세요.'); return; }
@@ -704,22 +938,49 @@ function addSiteDirect() {
   if (domain.includes('naver.com')||domain.includes('google.com')) { showToast('이 사이트는 추가할 수 없어요.'); return; }
   const sites = getSites();
   if (sites.find(s=>s.domain===domain||s.url===url)) { showToast('이미 추가된 사이트예요.'); return; }
-  sites.push({name, url, domain, enabled:true, fixed:false});
-  saveSites(sites); renderSites();
-  document.getElementById('siteDirectName').value='';
-  document.getElementById('siteDirectUrl').value='';
-  showToast(`✅ "${name}" 추가됐어요.`);
+  await detectAndAddSite(name, url, domain, () => {
+    document.getElementById('siteDirectName').value='';
+    document.getElementById('siteDirectUrl').value='';
+  });
 }
-function addSite(name, url) {
+async function detectAndAddSite(name, url, domain, onDone) {
+  const clientId = localStorage.getItem('naver_client_id')||'';
+  const clientSecret = localStorage.getItem('naver_client_secret')||'';
+  showToast('RSS 확인 중...');
+
+  let rssUrl = null;
+  try {
+    const params = new URLSearchParams({query:'_', clientId, clientSecret, type:'rss_detect', siteUrl: url});
+    const res = await fetch('/api/news?' + params);
+    const data = await res.json();
+    rssUrl = data.rssUrl || null;
+  } catch(e) {}
+
+  const sites = getSites();
+  if (rssUrl) {
+    // RSS 있음 → 바로 추가
+    sites.push({name, url, domain, rssUrl, enabled:true, fixed:false});
+    saveSites(sites); renderSites();
+    if (onDone) onDone();
+    showToast(`✅ "${name}" 추가됐어요. (RSS)`);
+  } else {
+    // RSS 없음 → 크롤링 선택 안내
+    showToast(`"${name}"은 RSS 미지원 — 크롤링으로 추가됐어요.`);
+    sites.push({name, url, domain, rssUrl: null, crawl: true, enabled:true, fixed:false});
+    saveSites(sites); renderSites();
+    if (onDone) onDone();
+  }
+}
+
+async function addSite(name, url) {
   const domain = url.replace(/https?:\/\//,'').split('/')[0];
   if (domain.includes('naver.com')||domain.includes('google.com')) { showToast('이 사이트는 추가할 수 없어요.'); return; }
   const sites = getSites();
   if (sites.find(s=>s.url===url||s.domain===domain)) { showToast('이미 추가된 사이트예요.'); return; }
-  sites.push({name, url, domain, enabled:true, fixed:false});
-  saveSites(sites); renderSites();
-  document.getElementById('siteResults').classList.remove('open');
-  document.getElementById('siteSearchInput').value='';
-  showToast(`✅ "${name}" 추가됐어요.`);
+  await detectAndAddSite(name, url, domain, () => {
+    document.getElementById('siteResults').classList.remove('open');
+    document.getElementById('siteSearchInput').value='';
+  });
 }
 
 function buildRowQuery(i) {
@@ -760,7 +1021,7 @@ async function runSearch(queries) {
   const clientSecret=localStorage.getItem('naver_client_secret')||'';
   showError('');
   if (!clientId||!clientSecret) { switchTab('settings'); return showToast('API 키를 먼저 저장해주세요.'); }
-  selectedIds.clear(); articles=[];
+  selectedIds.clear(); articles=[]; window._siteStatuses = {};
   updateCountUI();
   document.getElementById('listHeader').classList.remove('visible');
   document.getElementById('articleList').innerHTML=`<div style="background:white;">${Array(6).fill(`
@@ -787,6 +1048,11 @@ async function runSearch(queries) {
       (data.items||[]).forEach(item=>{
         const title=stripHtml(item.title);
         if (!seenTitles.has(title)) { seenTitles.add(title); allItems.push(item); }
+      });
+      // 사이트 상태 누적
+      if (data.siteStatuses) data.siteStatuses.forEach(s => {
+        if (!window._siteStatuses) window._siteStatuses = {};
+        if (!s.ok) window._siteStatuses[s.name] = s;
       });
     }
     articles=allItems
@@ -815,6 +1081,19 @@ function renderList() {
   header.classList.add('visible');
   document.getElementById('articleCount').textContent=articles.length;
   updateCountUI();
+  // 사이트 상태 알림 (크롤링 실패 등)
+  const statuses = window._siteStatuses || {};
+  const failedSites = Object.values(statuses).filter(s => !s.ok);
+  const statusHtml = failedSites.length ? `
+    <div style="background:#fff8e1;border-top:1px solid #ffe082;padding:10px 16px;">
+      ${failedSites.map(s => `
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;">
+          <span>⚠️</span>
+          <span style="color:var(--text-sub);font-weight:600;">${s.name}</span>
+          <span style="color:var(--text-muted);">· ${s.type==='crawl'?'크롤링':'RSS'} 실패 — 확인 필요</span>
+        </div>`).join('')}
+    </div>` : '';
+
   list.innerHTML=`<div style="background:white;">`+articles.map(a=>`
     <div class="article-item" id="item-${a.id}" onclick="openArticle(${a.id})">
       <input type="checkbox" ${selectedIds.has(a.id)?'checked':''} onclick="event.stopPropagation();toggleCheck(${a.id})">
@@ -829,7 +1108,7 @@ function renderList() {
       <button class="importance-btn ${a.importance==='star'?'active':''}" onclick="event.stopPropagation();setImportance(${a.id},'star')" title="중요">⭐</button>
       <button class="importance-btn ${a.importance==='check'?'active':''}" onclick="event.stopPropagation();setImportance(${a.id},'check')" title="점검">🔍</button>
       <button class="article-share-btn" onclick="event.stopPropagation();shareOne(${a.id})">📤</button>
-    </div>`).join('')+`</div>`;
+    </div>`).join('')+`</div>`+statusHtml;
 }
 
 function openArticle(id) { window.open(articles[id].link,'_blank'); }
@@ -997,7 +1276,7 @@ function getDateRange() {
     localStorage.setItem('naver_start',s); localStorage.setItem('naver_end',e);
     return {start:s?new Date(s).getTime():null,end:e?new Date(e+'T23:59:59').getTime():null};
   }
-  const map={'1h':1/24,'1d':1,'1w':7,'1m':30,'3m':90};
+  const map={'1h':1/24,'1d':1,'3d':3,'1w':7,'1m':30};
   const now=new Date();
   return {start:now.getTime()-(map[periodVal]||1)*86400000,end:now.getTime()};
 }
