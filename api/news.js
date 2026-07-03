@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const { query, display, start, sort, clientId, clientSecret, type, sites } = req.query;
+  const { query, display, start, sort, clientId, clientSecret, type, sites, naverEnabled } = req.query;
 
   if (!query || !clientId || !clientSecret) {
     return res.status(400).json({ error: '필수 파라미터가 없습니다.' });
@@ -20,8 +20,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1) 네이버 뉴스 API 검색
-    const naverItems = await searchNaver({ query, display: display || 100, start: start || 1, sort: sort || 'date', clientId, clientSecret });
+    // 1) 네이버 뉴스 API 검색 (naverEnabled가 '0'이면 스킵)
+    const naverItems = naverEnabled === '0' ? [] : await searchNaver({ query, display: display || 100, start: start || 1, sort: sort || 'date', clientId, clientSecret });
 
     // 2) 개별 사이트 검색
     let siteItems = [];
@@ -69,7 +69,11 @@ async function searchNaver({ query, display, start, sort, clientId, clientSecret
     throw new Error(err.errorMessage || `네이버 뉴스 API 오류 ${r.status}`);
   }
   const data = await r.json();
-  return (data.items || []).map(item => ({ ...item, _source: 'naver' }));
+  return (data.items || []).map(item => {
+    // originallink 도메인에서 신문사 추출
+    const press = extractPress(item.originallink || item.link || '');
+    return { ...item, _source: 'naver', _press: press };
+  });
 }
 
 async function searchNaverWeb({ query, display, clientId, clientSecret, siteName, siteDomain }) {
@@ -90,6 +94,38 @@ async function searchNaverWeb({ query, display, clientId, clientSecret, siteName
       _source: siteName,
       _siteDomain: siteDomain
     }));
+}
+
+function extractPress(url) {
+  try {
+    const domain = url.replace(/https?:\/\//, '').split('/')[0].replace(/^www\./, '');
+    // 주요 언론사 도메인 매핑
+    const map = {
+      'inews24.com': '아이뉴스24',
+      'greened.kr': '그린경제',
+      'hankyung.com': '한국경제',
+      'chosun.com': '조선일보',
+      'joongang.co.kr': '중앙일보',
+      'donga.com': '동아일보',
+      'hani.co.kr': '한겨레',
+      'mk.co.kr': '매일경제',
+      'sedaily.com': '서울경제',
+      'etnews.com': '전자신문',
+      'yonhapnews.co.kr': '연합뉴스',
+      'yna.co.kr': '연합뉴스',
+      'newsis.com': '뉴시스',
+      'news1.kr': '뉴스1',
+      'mt.co.kr': '머니투데이',
+      'bizwatch.co.kr': '비즈워치',
+      'the-bell.co.kr': '더벨',
+      'insurancejournal.co.kr': '보험저널',
+      'insjournal.co.kr': '보험저널',
+      'newsport.co.kr': '뉴스포트',
+      'fntimes.com': '한국금융신문',
+      'kfnews.co.kr': '한국금융',
+    };
+    return map[domain] || domain;
+  } catch { return ''; }
 }
 
 function normalizeTitle(title) {
