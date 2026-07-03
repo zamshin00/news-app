@@ -144,6 +144,15 @@ input[type="date"] { font-size: 12px; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .display-custom-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .display-custom-row input { width: 120px !important; }
+.importance-btn { background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 3px; opacity: 0.35; transition: opacity 0.15s; flex-shrink: 0; line-height: 1; }
+.importance-btn.active { opacity: 1; }
+.history-date-group { padding: 8px 16px 4px; font-size: 11px; font-weight: 700; color: var(--text-muted); background: var(--bg); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.4px; }
+.history-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 16px; border-bottom: 1px solid #f0f0f0; background: white; }
+.history-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.history-info { flex: 1; min-width: 0; }
+.history-title { font-size: 13px; font-weight: 500; line-height: 1.4; margin-bottom: 3px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.history-meta { font-size: 11px; color: var(--text-muted); }
+.history-del-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; flex-shrink: 0; padding: 2px; }
 </style>
 </head>
 <body>
@@ -157,6 +166,7 @@ input[type="date"] { font-size: 12px; }
   <div class="tab active" id="tab-search" onclick="switchTab('search')">🔍 검색(기사)</div>
   <div class="tab" id="tab-fss" onclick="switchTab('fss')">🏛 금융감독원</div>
   <div class="tab" id="tab-settings" onclick="switchTab('settings')">⚙️ 설정</div>
+  <div class="tab" id="tab-history" onclick="switchTab('history')">📋 공유이력</div>
 </div>
 
 <!-- 검색 화면 -->
@@ -244,6 +254,15 @@ input[type="date"] { font-size: 12px; }
     <p style="font-size:14px;color:var(--text-sub);line-height:1.7;">현재 개발 중입니다.<br>기사 검색 기능 완성 후 순차 개발 예정이에요.</p>
     <div style="background:var(--green-light);border:1px solid #c3ecd6;border-radius:var(--radius-sm);padding:12px 20px;font-size:12px;color:#02a84b;font-weight:600;">🚧 Coming Soon</div>
   </div>
+</div>
+
+<!-- 공유이력 화면 -->
+<div class="screen" id="screen-history">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:white;border-bottom:1px solid var(--border);position:sticky;top:96px;z-index:90;">
+    <span style="font-size:13px;font-weight:700;color:var(--text);">공유 이력</span>
+    <button onclick="downloadHistoryCSV()" style="padding:6px 14px;background:var(--green);color:white;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">⬇ CSV 다운로드</button>
+  </div>
+  <div id="historyList" style="padding-bottom:40px;"></div>
 </div>
 
 <!-- 설정 화면 -->
@@ -383,12 +402,13 @@ const DEFAULT_GROUPS = Array.from({length:5}, (_,i) => ({
 
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  ['search','settings','edit','fss'].forEach(s => {
+  ['search','settings','edit','fss','history'].forEach(s => {
     const el = document.getElementById('screen-'+s);
     if (el) el.classList.remove('active');
   });
   document.getElementById('tab-'+tab)?.classList.add('active');
   document.getElementById('screen-'+tab)?.classList.add('active');
+  if (tab === 'history') renderHistory();
 }
 
 function getGroups() {
@@ -605,7 +625,7 @@ async function searchSite() {
     const excludes = ['naver.com','google.com','daum.net','nate.com','zum.com','kakao.com',
       'youtube.com','facebook.com','instagram.com','twitter.com','wikipedia.org','tistory.com','blogspot.com'];
 
-    // 도메인별 그룹핑 → 경로 가장 짧은 URL(홈페이지에 가까운)을 대표로 선택
+    // 도메인별 그룹핑 → 루트 도메인만 대표로 선택 (기사 URL 제외)
     const domainMap = new Map();
     (data.items||[]).forEach(item => {
       const rawUrl = item.link || '';
@@ -613,12 +633,30 @@ async function searchSite() {
       const domain = domainFull.replace(/^www\./, '');
       if (!domain) return;
       if (excludes.some(e => domain.includes(e))) return;
-      const pathLen = rawUrl.replace(/https?:\/\/[^/]+/, '').length;
-      if (!domainMap.has(domain) || pathLen < domainMap.get(domain).pathLen) {
+      // 경로가 너무 긴 URL은 기사일 가능성이 높으므로 제외 (홈페이지는 경로가 짧음)
+      const path = rawUrl.replace(/https?:\/\/[^/]+/, '');
+      const pathDepth = path.split('/').filter(Boolean).length;
+      if (pathDepth > 1) return; // 경로 depth 2 이상은 기사로 판단, 스킵
+      if (!domainMap.has(domain)) {
         const title = (item.title||'').replace(/<[^>]*>/g,'').replace(/\s*[-|:].*/, '').trim();
-        domainMap.set(domain, { domain, title, pathLen, rootUrl: 'https://' + domainFull });
+        domainMap.set(domain, { domain, title, rootUrl: 'https://' + domainFull });
       }
     });
+
+    // domainMap이 비면 depth 제한 없이 재시도 (홈페이지 URL이 없는 경우)
+    if (domainMap.size === 0) {
+      (data.items||[]).forEach(item => {
+        const rawUrl = item.link || '';
+        const domainFull = rawUrl.replace(/https?:\/\//, '').split('/')[0];
+        const domain = domainFull.replace(/^www\./, '');
+        if (!domain) return;
+        if (excludes.some(e => domain.includes(e))) return;
+        if (!domainMap.has(domain)) {
+          const title = (item.title||'').replace(/<[^>]*>/g,'').replace(/\s*[-|:].*/, '').trim();
+          domainMap.set(domain, { domain, title, rootUrl: 'https://' + domainFull });
+        }
+      });
+    }
 
     const items = [...domainMap.values()].slice(0, 5);
 
@@ -737,9 +775,11 @@ async function runSearch(queries) {
     // 활성화된 개별 사이트 목록 (naver fixed 제외)
     const activeSites=getSites().filter(s=>s.enabled&&!s.fixed&&s.domain);
     const sitesParam=activeSites.length?JSON.stringify(activeSites):null;
+    // 네이버 뉴스 활성화 여부
+    const naverEnabled=getSites().find(s=>s.fixed)?.enabled !== false;
 
     for (const query of queries) {
-      const params=new URLSearchParams({query,display:getDisplayCount(),start:1,sort:sortVal,clientId,clientSecret});
+      const params=new URLSearchParams({query,display:getDisplayCount(),start:1,sort:sortVal,clientId,clientSecret,naverEnabled:naverEnabled?'1':'0'});
       if (sitesParam) params.set('sites', sitesParam);
       const res=await fetch(`/api/news?${params}`);
       if (!res.ok) { const err=await res.json().catch(()=>({})); throw new Error(err.error||`오류 ${res.status}`); }
@@ -757,7 +797,9 @@ async function runSearch(queries) {
         title:stripHtml(item.title),
         link:item.originallink||item.link,
         date:formatDate(item.pubDate),
-        source:item._source||'네이버뉴스'
+        source:item._source||'naver',
+        press:item._press||'',
+        importance: null
       }));
     renderList();
   } catch(e) {
@@ -778,13 +820,131 @@ function renderList() {
       <input type="checkbox" ${selectedIds.has(a.id)?'checked':''} onclick="event.stopPropagation();toggleCheck(${a.id})">
       <div class="article-info">
         <div class="article-title">${a.title}</div>
-        <div class="article-meta"><span class="article-source">${a.source}</span><span class="article-date">${a.date}</span></div>
+        <div class="article-meta">
+          <span class="article-source">${a.source === 'naver' ? '네이버' : a.source}</span>
+          ${a.press && a.press !== (a.source === 'naver' ? '네이버' : a.source) ? `<span style="font-size:11px;color:var(--text-sub);">${a.press}</span>` : ''}
+          <span class="article-date">${a.date}</span>
+        </div>
       </div>
+      <button class="importance-btn ${a.importance==='star'?'active':''}" onclick="event.stopPropagation();setImportance(${a.id},'star')" title="중요">⭐</button>
+      <button class="importance-btn ${a.importance==='check'?'active':''}" onclick="event.stopPropagation();setImportance(${a.id},'check')" title="점검">🔍</button>
       <button class="article-share-btn" onclick="event.stopPropagation();shareOne(${a.id})">📤</button>
     </div>`).join('')+`</div>`;
 }
 
 function openArticle(id) { window.open(articles[id].link,'_blank'); }
+
+function setImportance(id, type) {
+  const a = articles[id];
+  a.importance = a.importance === type ? null : type;
+  // 해당 아이템만 버튼 업데이트
+  const item = document.getElementById('item-'+id);
+  if (item) {
+    item.querySelectorAll('.importance-btn').forEach(btn => btn.classList.remove('active'));
+    if (a.importance) {
+      const idx = a.importance === 'star' ? 0 : 1;
+      item.querySelectorAll('.importance-btn')[idx]?.classList.add('active');
+    }
+  }
+}
+
+// 공유 이력 저장
+function saveToHistory(items) {
+  const history = JSON.parse(localStorage.getItem('share_history') || '[]');
+  const now = new Date().toISOString();
+  items.forEach(a => {
+    history.unshift({
+      date: now,
+      importance: a.importance || 'normal',
+      source: a.source,
+      title: a.title,
+      link: a.link
+    });
+  });
+  // 최대 500개 유지
+  if (history.length > 500) history.splice(500);
+  localStorage.setItem('share_history', JSON.stringify(history));
+}
+
+// 이력 화면 렌더링
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem('share_history') || '[]');
+  const el = document.getElementById('historyList');
+  if (!history.length) {
+    el.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted);font-size:13px;">공유한 기사가 없어요.</div>';
+    return;
+  }
+
+  // 날짜별 그룹핑
+  const groups = {};
+  history.forEach(item => {
+    const d = new Date(item.date);
+    const today = new Date();
+    const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
+    let label;
+    if (d.toDateString() === today.toDateString()) label = '오늘';
+    else if (d.toDateString() === yesterday.toDateString()) label = '어제';
+    else label = `${d.getMonth()+1}/${d.getDate()}`;
+    if (!groups[label]) groups[label] = [];
+    groups[label].push(item);
+  });
+
+  const icon = {star:'⭐', check:'🔍', normal:'📰'};
+  let html = '';
+  Object.entries(groups).forEach(([label, items]) => {
+    html += `<div class="history-date-group">${label} · ${items.length}건</div>`;
+    items.forEach((item, i) => {
+      html += `<div class="history-item">
+        <div class="history-icon">${icon[item.importance]||'📰'}</div>
+        <div class="history-info">
+          <div class="history-title">${item.title}</div>
+          <div class="history-meta">${item.source} · ${formatDate(item.date)}</div>
+        </div>
+        <button class="history-del-btn" onclick="deleteHistory('${label}',${i})">✕</button>
+      </div>`;
+    });
+  });
+  el.innerHTML = html;
+}
+
+function deleteHistory(label, idx) {
+  const history = JSON.parse(localStorage.getItem('share_history') || '[]');
+  // 해당 날짜 그룹의 idx번째 항목 찾아서 삭제
+  const today = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
+  let count = 0;
+  for (let i = 0; i < history.length; i++) {
+    const d = new Date(history[i].date);
+    let lbl;
+    if (d.toDateString() === today.toDateString()) lbl = '오늘';
+    else if (d.toDateString() === yesterday.toDateString()) lbl = '어제';
+    else lbl = `${d.getMonth()+1}/${d.getDate()}`;
+    if (lbl === label) {
+      if (count === idx) { history.splice(i, 1); break; }
+      count++;
+    }
+  }
+  localStorage.setItem('share_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function downloadHistoryCSV() {
+  const history = JSON.parse(localStorage.getItem('share_history') || '[]');
+  if (!history.length) { showToast('이력이 없어요.'); return; }
+  const header = '중요도,출처,제목,URL,공유일시';
+  const iconMap = {star:'⭐중요', check:'🔍점검', normal:'📰일반'};
+  const rows = history.map(h =>
+    [iconMap[h.importance]||'📰일반', h.source, '"'+h.title.replace(/"/g,'""')+'"', h.link, formatDate(h.date)].join(',')
+  );
+  const csv = '﻿' + header + '\n' + rows.join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '공유이력_'+new Date().toISOString().split('T')[0]+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ CSV 다운로드 완료!');
+}
 function toggleCheck(id) { if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id); updateCountUI(); }
 function updateCountUI() {
   const n=selectedIds.size;
@@ -867,15 +1027,33 @@ function showError(msg) {
 }
 function copyUrls() {
   if (!selectedIds.size) return;
-  const urls=[...selectedIds].map(id=>`📰 ${articles[id].title}\n${articles[id].link}`).join('\n\n\n')+'\n.';
+  const importanceIcon = {star:'⭐', check:'🔍', normal:'📰'};
+  const selectedArticles = [...selectedIds].map(id => articles[id]);
+  // 신문사별로 묶기
+  const pressGroups = {};
+  selectedArticles.forEach(a => {
+    const pressName = a.press || (a.source === 'naver' ? '네이버' : a.source);
+    if (!pressGroups[pressName]) pressGroups[pressName] = [];
+    pressGroups[pressName].push(a);
+  });
+
+  const urls = Object.entries(pressGroups).map(([press, items]) => {
+    const lines = items.map(a => {
+      const icon = importanceIcon[a.importance] || '📰';
+      return `${icon} ${press}\n${a.title}\n${a.link}`;
+    }).join('\n\n');
+    return lines;
+  }).join('\n\n') + '\n.';
+  // 이력 저장
+  saveToHistory(selectedArticles);
   const share=()=>{if(navigator.share)navigator.share({text:urls}).catch(()=>{});};
   navigator.clipboard.writeText(urls)
-    .then(()=>{showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`);share();})
+    .then(()=>{showToast(`✅ ${selectedIds.size}개 복사 완료!`);share();})
     .catch(()=>{
       const ta=document.createElement('textarea');
       ta.value=urls; document.body.appendChild(ta); ta.select();
       document.execCommand('copy'); document.body.removeChild(ta);
-      showToast(`✅ ${selectedIds.size}개 URL 복사 완료!`); share();
+      showToast(`✅ ${selectedIds.size}개 복사 완료!`); share();
     });
 }
 </script>
