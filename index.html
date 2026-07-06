@@ -334,7 +334,7 @@ input[type="date"] { font-size: 12px; }
   <div class="edit-header">
     <button class="back-btn" onclick="closeEdit()">←</button>
     <span class="edit-title" id="editTitle">그룹 편집</span>
-    <button class="edit-save-btn" onclick="saveEdit()">저장</button>
+    <button class="edit-save-btn" id="editSaveBtn" onclick="saveEdit()">저장</button>
   </div>
   <div class="edit-body">
     <input type="text" class="group-name-input" id="editGroupName" placeholder="그룹 이름 입력...">
@@ -427,7 +427,6 @@ const DEFAULT_INSURANCE_COMPANIES = {
   renderGroupTabs();
   renderKeywordRows();
   renderGroupSettingsList();
-  renderCompanyManageList();
   renderSites();
 })();
 
@@ -480,7 +479,7 @@ function addCompany() {
   companies[category].push(name);
   saveCompanies(companies);
   document.getElementById('companyAddName').value = '';
-  renderCompanyManageList();
+  refreshCompanyManageUI();
   refreshCompanyChecklistIfOpen();
   showToast(`✅ "${name}" 추가됐어요.`);
 }
@@ -492,7 +491,7 @@ function moveCompany(category, index, dir) {
   if (newIndex < 0 || newIndex >= arr.length) return;
   [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
   saveCompanies(companies);
-  renderCompanyManageList();
+  refreshCompanyManageUI();
   refreshCompanyChecklistIfOpen();
 }
 
@@ -503,7 +502,7 @@ function deleteCompany(category, index) {
   // 선택돼 있었으면 선택 목록에서도 제거
   const selected = getSelectedCompanies().filter(n => n !== removed);
   saveSelectedCompanies(selected);
-  renderCompanyManageList();
+  refreshCompanyManageUI();
   refreshCompanyChecklistIfOpen();
   showToast('삭제됐어요.');
 }
@@ -516,38 +515,21 @@ function refreshCompanyChecklistIfOpen() {
   }
 }
 
+function refreshCompanyManageUI() {
+  // 설정 > 보험사 편집 화면이 열려 있으면 즉시 반영
+  const editScreen = document.getElementById('screen-edit');
+  if (editScreen.classList.contains('active')) {
+    const g = getGroups()[editingGroupIdx];
+    if (g && g.isCompanyGroup) renderCompanyEditScreen();
+  }
+}
+
 function resetCompanies() {
   if (!confirm('보험사 목록을 기본값으로 초기화할까요? 직접 추가/삭제/순서변경한 내용이 사라져요.')) return;
   saveCompanies(JSON.parse(JSON.stringify(DEFAULT_INSURANCE_COMPANIES)));
-  renderCompanyManageList();
+  refreshCompanyManageUI();
   refreshCompanyChecklistIfOpen();
   showToast('초기화됐어요.');
-}
-
-function renderCompanyManageList() {
-  const el = document.getElementById('companyManageList');
-  if (!el) return;
-  const companies = getCompanies();
-  let html = '';
-  Object.entries(companies).forEach(([category, names]) => {
-    html += `<div style="padding:8px 16px 2px;font-size:11px;font-weight:700;color:var(--text-muted);">${category} (${names.length})</div>`;
-    names.forEach((name, i) => {
-      const isFirst = i === 0;
-      const isLast = i === names.length - 1;
-      html += `
-        <div class="site-item">
-          <div class="company-order-btns">
-            <button class="company-order-btn" ${isFirst?'disabled':''} onclick="moveCompany('${category}',${i},-1)" title="위로">▲</button>
-            <button class="company-order-btn" ${isLast?'disabled':''} onclick="moveCompany('${category}',${i},1)" title="아래로">▼</button>
-          </div>
-          <div class="site-info">
-            <div class="site-name">${name}</div>
-          </div>
-          <button class="site-del-btn" onclick="deleteCompany('${category}',${i})">🗑</button>
-        </div>`;
-    });
-  });
-  el.innerHTML = html;
 }
 
 function renderGroupTabs() {
@@ -779,6 +761,7 @@ function resetKeywords() {
 function saveEdit() {
   const groups = getGroups();
   const g = groups[editingGroupIdx];
+  if (g.isCompanyGroup) { closeEdit(); return; }
   g.name = document.getElementById('editGroupName').value.trim() || g.name;
   g.rowops = g.rowops || ['OR','OR','OR'];
   for (let i = 0; i < 4; i++) {
