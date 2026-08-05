@@ -112,6 +112,10 @@ input[type="date"] { font-size: 12px; }
 .company-order-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
 .company-order-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text-sub); cursor: pointer; padding: 1px 6px; font-size: 10px; border-radius: 4px; line-height: 1.4; }
 .company-order-btn:disabled { opacity: 0.25; cursor: default; }
+.company-item-row { transition: transform 0.15s ease; }
+.company-drag-handle { cursor: grab; padding: 4px 10px 4px 2px; color: var(--text-muted); font-size: 18px; touch-action: none; user-select: none; flex-shrink: 0; line-height: 1; }
+.company-item-row.dragging { position: relative; z-index: 20; background: #fbfbfb; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.company-item-row.dragging .company-drag-handle { cursor: grabbing; }
 .site-search-row { display: flex; gap: 8px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .site-search-row input { flex: 1; }
 .site-results { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin: 0 16px 8px; overflow: hidden; display: none; }
@@ -251,11 +255,50 @@ input[type="date"] { font-size: 12px; }
 
 <!-- 금융감독원 화면 -->
 <div class="screen" id="screen-fss">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:80px 32px;text-align:center;">
-    <div style="font-size:56px;">🏛</div>
-    <h3 style="font-size:17px;font-weight:700;color:var(--text);">금융감독원 공시 검색</h3>
-    <p style="font-size:14px;color:var(--text-sub);line-height:1.7;">현재 개발 중입니다.<br>기사 검색 기능 완성 후 순차 개발 예정이에요.</p>
-    <div style="background:var(--green-light);border:1px solid #c3ecd6;border-radius:var(--radius-sm);padding:12px 20px;font-size:12px;color:#02a84b;font-weight:600;">🚧 Coming Soon</div>
+  <div class="search-panel">
+    <div class="direct-row">
+      <input type="text" id="fssKeyword" placeholder="키워드 (비우면 기간 전체 조회)" autocomplete="new-password" onkeydown="if(event.key==='Enter') runFssSearch()">
+      <button style="padding:8px 14px;background:var(--green);color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="runFssSearch()">조회</button>
+    </div>
+    <div class="option-group">
+      <div class="section-label">조회 기간</div>
+      <div class="pill-group" id="fssPeriodGroup">
+        <button class="pill" data-val="all" onclick="selectFssPeriod(this)">전체</button>
+        <button class="pill" data-val="1d" onclick="selectFssPeriod(this)">1일</button>
+        <button class="pill" data-val="3d" onclick="selectFssPeriod(this)">3일</button>
+        <button class="pill" data-val="1w" onclick="selectFssPeriod(this)">1주</button>
+        <button class="pill" data-val="1m" onclick="selectFssPeriod(this)">1개월</button>
+        <button class="pill" data-val="custom" onclick="selectFssPeriod(this)">직접입력</button>
+      </div>
+      <div class="date-range" id="fssDateRange">
+        <div class="date-range-row">
+          <input type="date" id="fssStartDate">
+          <span>~</span>
+          <input type="date" id="fssEndDate">
+        </div>
+      </div>
+    </div>
+    <div id="fssErrorMsg" class="error-box" style="display:none;"></div>
+  </div>
+
+  <div class="list-header" id="fssListHeader">
+    <div class="list-meta">
+      <span class="count-badge" id="fssCount">0</span>
+      <span class="selected-count" id="fssSelectedCount">0개 선택</span>
+    </div>
+    <button class="select-all-btn" onclick="toggleFssSelectAll()">전체선택</button>
+  </div>
+
+  <div class="article-list" id="fssList">
+    <div class="empty-state">
+      <div class="icon">🏛</div>
+      <h3>금융감독원 자료를 조회해보세요</h3>
+      <p>기간을 선택하고 조회를 눌러주세요.<br>키워드를 입력하면 해당 키워드로 검색해요.</p>
+    </div>
+  </div>
+
+  <div class="copy-bar">
+    <button class="btn-copy" id="fssCopyBtn" onclick="copyFssUrls()" disabled>URL 복사 (0개)</button>
   </div>
 </div>
 
@@ -327,6 +370,16 @@ input[type="date"] { font-size: 12px; }
       <button class="green-btn" style="white-space:nowrap;padding:8px 14px;" onclick="addSiteDirect()">추가</button>
     </div>
   </div>
+
+  <div class="settings-section-title" style="margin-top:8px;padding-top:16px;border-top:4px solid var(--bg);">🏛 금융감독원 조회 사이트</div>
+  <div id="fssSiteList"></div>
+  <div class="site-search-row">
+    <input type="text" id="fssSiteDirectName" placeholder="이름 (예: 보도자료)" autocomplete="new-password">
+  </div>
+  <div class="site-search-row" style="padding-top:0;">
+    <input type="text" id="fssSiteDirectUrl" placeholder="list.do 주소 붙여넣기" autocomplete="new-password">
+    <button class="green-btn" style="white-space:nowrap;padding:8px 14px;" onclick="addFssSiteDirect()">추가</button>
+  </div>
 </div>
 
 <!-- 편집 화면 -->
@@ -354,6 +407,9 @@ let sortVal = 'sim';
 let periodVal = '1d';
 let displayVal = '0'; // '0'=전체, '20','50','100','custom'
 let currentGroupIdx = -1; // -1 = 아무 그룹도 선택 안 된 상태
+let fssArticles = [];
+let fssSelectedIds = new Set();
+let fssPeriodVal = 'all';
 let editingGroupIdx = -1;
 
 const GROUP_COLORS = ['#03C75A','#378ADD','#D85A30','#9B59B6','#E67E22'];
@@ -373,6 +429,38 @@ const DEFAULT_INSURANCE_COMPANIES = {
   '손보사': ['농협손보','롯데손보','메리츠화재','삼성화재','서울보증','신한EZ손보','카카오페이손보','코리안리','하나손보','한화손보','현대해상','흥국화재','AIG손보','AXA손보','KB손보'],
   '생보사': ['교보생명','동양생명','라이나생명','메트라이프생명','미래에셋생명','삼성생명','신한라이프','처브라이프','푸본현대생명','하나생명','한화생명','흥국생명','ABL생명','AIA생명','BNP파리바 카디프생명','DB생명','iM라이프','KB라이프','KDB생명','NH농협생명']
 };
+
+// 협회 공식 명단(정식 상호) → 이 앱에서 쓰는 축약 표기 매핑. 여기 없는 새 회사는 아래 일반 규칙으로 축약.
+const OFFICIAL_NAME_MAP = {
+  '메리츠화재해상보험주식회사':'메리츠화재', '한화손해보험주식회사':'한화손보', '롯데손해보험주식회사':'롯데손보',
+  '흥국화재해상보험주식회사':'흥국화재', '삼성화재해상보험주식회사':'삼성화재', '현대해상화재보험주식회사':'현대해상',
+  'KB손해보험주식회사':'KB손보', 'DB손해보험주식회사':'DB손보', '코리안리재보험주식회사':'코리안리',
+  '서울보증보험주식회사':'서울보증', 'AXA손해보험주식회사':'AXA손보', 'AIG손해보험주식회사':'AIG손보',
+  '하나손해보험주식회사':'하나손보', '농협손해보험주식회사':'농협손보', '(주)카카오페이손해보험':'카카오페이손보',
+  '신한EZ손해보험(주)':'신한EZ손보',
+  '한화생명':'한화생명', 'ABL생명':'ABL생명', '삼성생명':'삼성생명', '흥국생명':'흥국생명', '교보생명':'교보생명',
+  'iM라이프생명':'iM라이프', '미래에셋생명':'미래에셋생명', 'KDB생명':'KDB생명', 'DB생명':'DB생명', '동양생명':'동양생명',
+  '메트라이프생명':'메트라이프생명', 'KB라이프생명':'KB라이프', '신한라이프생명':'신한라이프', '처브라이프생명':'처브라이프',
+  '하나생명':'하나생명', 'BNP파리바카디프생명':'BNP파리바 카디프생명', '푸본현대생명':'푸본현대생명',
+  '라이나생명':'라이나생명', 'AIA생명':'AIA생명', 'NH농협생명':'NH농협생명'
+};
+
+// 매핑에 없는 새 회사명을 위한 일반 축약 규칙 (신설 보험사 대응용)
+function genericCanonicalize(raw) {
+  let n = raw.replace(/\(주\)/g, '').replace(/주식회사/g, '').replace(/\s+/g, '');
+  n = n.replace(/화재해상보험/g, '화재')
+       .replace(/해상화재보험/g, '해상')
+       .replace(/손해보험/g, '손보')
+       .replace(/재보험/g, '')
+       .replace(/화재보험/g, '화재')
+       .replace(/라이프생명/g, '라이프')
+       .replace(/보험$/, '');
+  return n || raw;
+}
+
+function canonicalizeCompanyName(raw) {
+  return OFFICIAL_NAME_MAP[raw] || genericCanonicalize(raw);
+}
 
 (function init() {
   const id = localStorage.getItem('naver_client_id') || '';
@@ -424,6 +512,31 @@ const DEFAULT_INSURANCE_COMPANIES = {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('endDate').value = today;
   document.getElementById('startDate').value = today;
+  // 금융감독원 기본 조회 사이트 초기화
+  const DEFAULT_FSS_SITES = [
+    { name: '보도자료', url: 'https://www.fss.or.kr/fss/bbs/B0000188/list.do?menuNo=200218' },
+    { name: '보도자료 설명', url: 'https://www.fss.or.kr/fss/bbs/B0000189/list.do?menuNo=200219' },
+    { name: '과거제재내용 공시', url: 'https://www.fss.or.kr/fss/bbs/B0000159/list.do?menuNo=200173' },
+    { name: '검사결과제재', url: 'https://www.fss.or.kr/fss/job/openInfo/list.do?menuNo=200476' },
+    { name: '경영유의사항 등 공시', url: 'https://www.fss.or.kr/fss/job/openInfoImpr/list.do?menuNo=200483' },
+    { name: '최근 제개정 정보', url: 'https://www.fss.or.kr/fss/job/lrgRegItnInfo/list.do?menuNo=200488' },
+    { name: '세칙 제개정 예고', url: 'https://www.fss.or.kr/fss/job/lrgRegItnPrvntc/list.do?menuNo=200489' },
+    { name: '행정지도 예고', url: 'https://www.fss.or.kr/fss/job/admnPrvntc/list.do?menuNo=200491' },
+    { name: '행정지도 내역', url: 'https://www.fss.or.kr/fss/job/admnstgudc/list.do?menuNo=200492' },
+    { name: '감독행정작용 내역', url: 'https://www.fss.or.kr/fss/job/admnstgudcDtls/list.do?menuNo=200494' },
+    { name: '금융감독판례', url: 'https://www.fss.or.kr/fss/job/fvsttPrcdnt/list.do?menuNo=200179' },
+    { name: '분쟁조정사례', url: 'https://www.fss.or.kr/fss/job/fncCnflCase/list.do?menuNo=201195' },
+  ];
+  if (!localStorage.getItem('fss_sites')) {
+    const initial = DEFAULT_FSS_SITES.map(s => ({ ...s, enabled: true, rssUrl: null }));
+    localStorage.setItem('fss_sites', JSON.stringify(initial));
+  }
+  fssPeriodVal = 'all';
+  document.querySelectorAll('#fssPeriodGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === fssPeriodVal); });
+  document.getElementById('fssEndDate').value = today;
+  document.getElementById('fssStartDate').value = today;
+  renderFssSites();
+
   renderGroupTabs();
   renderKeywordRows();
   renderGroupSettingsList();
@@ -495,6 +608,81 @@ function moveCompany(category, index, dir) {
   refreshCompanyChecklistIfOpen();
 }
 
+// ─── 보험사 목록 끌어서 순서 변경 (Pointer Events, 마우스+터치 공용) ───
+let companyDragState = null;
+
+function startCompanyDrag(e, category, index) {
+  e.preventDefault();
+  const handle = e.currentTarget;
+  const item = handle.closest('.company-item-row');
+  if (!item) return;
+  const list = item.parentElement;
+  const items = Array.from(list.querySelectorAll('.company-item-row'))
+    .filter(el => el.dataset.category === category);
+  const rects = items.map(el => el.getBoundingClientRect());
+  companyDragState = {
+    category, items, rects,
+    fromIndex: index, currentIndex: index,
+    item, handle,
+    startY: e.clientY,
+    itemHeight: rects[index].height
+  };
+  item.classList.add('dragging');
+  item.style.transition = 'none';
+  try { handle.setPointerCapture(e.pointerId); } catch(err) {}
+  handle.addEventListener('pointermove', onCompanyDragMove);
+  handle.addEventListener('pointerup', onCompanyDragEnd);
+  handle.addEventListener('pointercancel', onCompanyDragEnd);
+}
+
+function onCompanyDragMove(e) {
+  const s = companyDragState;
+  if (!s) return;
+  const deltaY = e.clientY - s.startY;
+  s.item.style.transform = `translateY(${deltaY}px)`;
+
+  const draggedCenter = s.rects[s.fromIndex].top + s.rects[s.fromIndex].height / 2 + deltaY;
+  let newIndex = s.fromIndex;
+  s.rects.forEach((r, i) => {
+    if (i === s.fromIndex) return;
+    const center = r.top + r.height / 2;
+    if (draggedCenter > center && i > newIndex) newIndex = i;
+    if (draggedCenter < center && i < newIndex) newIndex = i;
+  });
+
+  if (newIndex !== s.currentIndex) {
+    s.items.forEach((el, i) => {
+      if (i === s.fromIndex) return;
+      let shift = 0;
+      if (newIndex > s.fromIndex && i > s.fromIndex && i <= newIndex) shift = -s.itemHeight;
+      else if (newIndex < s.fromIndex && i < s.fromIndex && i >= newIndex) shift = s.itemHeight;
+      el.style.transform = shift ? `translateY(${shift}px)` : '';
+    });
+    s.currentIndex = newIndex;
+  }
+}
+
+function onCompanyDragEnd(e) {
+  const s = companyDragState;
+  if (!s) return;
+  s.handle.removeEventListener('pointermove', onCompanyDragMove);
+  s.handle.removeEventListener('pointerup', onCompanyDragEnd);
+  s.handle.removeEventListener('pointercancel', onCompanyDragEnd);
+  s.items.forEach(el => { el.style.transform = ''; el.style.transition = ''; });
+  s.item.classList.remove('dragging');
+
+  if (s.currentIndex !== s.fromIndex) {
+    const companies = getCompanies();
+    const arr = companies[s.category];
+    const [moved] = arr.splice(s.fromIndex, 1);
+    arr.splice(s.currentIndex, 0, moved);
+    saveCompanies(companies);
+    refreshCompanyChecklistIfOpen();
+  }
+  companyDragState = null;
+  refreshCompanyManageUI();
+}
+
 function deleteCompany(category, index) {
   const companies = getCompanies();
   const removed = companies[category].splice(index, 1)[0];
@@ -530,6 +718,57 @@ function resetCompanies() {
   refreshCompanyManageUI();
   refreshCompanyChecklistIfOpen();
   showToast('초기화됐어요.');
+}
+
+async function syncCompaniesFromAssociation() {
+  showToast('협회 명단 조회 중...');
+  try {
+    const clientId = localStorage.getItem('naver_client_id') || '_';
+    const clientSecret = localStorage.getItem('naver_client_secret') || '_';
+    const params = new URLSearchParams({ query: '_', clientId, clientSecret, type: 'company_sync' });
+    const res = await fetch('/api/news?' + params);
+    const data = await res.json();
+    if (data.error) { showToast('⚠️ ' + data.error); return; }
+    if (!data.sonbo || !data.saengbo) { showToast('⚠️ 명단을 가져오지 못했어요.'); return; }
+
+    const newSonbo = [...new Set(data.sonbo.map(canonicalizeCompanyName))].filter(n => n && n !== 'DB손보');
+    const newSaengbo = [...new Set(data.saengbo.map(canonicalizeCompanyName))].filter(Boolean);
+
+    const current = getCompanies();
+    const diff = (oldArr, newArr) => ({
+      added: newArr.filter(n => !oldArr.includes(n)),
+      removed: oldArr.filter(n => !newArr.includes(n))
+    });
+    const sonboDiff = diff(current['손보사'], newSonbo);
+    const saengboDiff = diff(current['생보사'], newSaengbo);
+    const totalChanges = sonboDiff.added.length + sonboDiff.removed.length + saengboDiff.added.length + saengboDiff.removed.length;
+
+    if (totalChanges === 0) { showToast('✅ 이미 최신 상태예요.'); return; }
+
+    let msg = '협회 정회원사 기준으로 목록을 업데이트합니다 (정회원사만 유지, DB손보 제외).\n';
+    if (data.sonboSource === 'namuwiki') msg += '\n⚠️ 손보사: 협회 홈페이지 개편으로 업데이트 불가, 나무위키로 업데이트 진행. 실제와 다를 경우 수동 업데이트 필요.';
+    if (data.saengboSource === 'namuwiki') msg += '\n⚠️ 생보사: 협회 홈페이지 개편으로 업데이트 불가, 나무위키로 업데이트 진행. 실제와 다를 경우 수동 업데이트 필요.';
+    if (sonboDiff.added.length) msg += `\n[손보사 추가] ${sonboDiff.added.join(', ')}`;
+    if (sonboDiff.removed.length) msg += `\n[손보사 삭제] ${sonboDiff.removed.join(', ')}`;
+    if (saengboDiff.added.length) msg += `\n[생보사 추가] ${saengboDiff.added.join(', ')}`;
+    if (saengboDiff.removed.length) msg += `\n[생보사 삭제] ${saengboDiff.removed.join(', ')}`;
+    msg += '\n\n진행할까요?';
+    if (!confirm(msg)) return;
+
+    saveCompanies({ '손보사': newSonbo, '생보사': newSaengbo });
+
+    // 삭제된 회사가 선택 목록에 있었으면 함께 정리
+    const removedNames = new Set([...sonboDiff.removed, ...saengboDiff.removed]);
+    const selected = getSelectedCompanies().filter(n => !removedNames.has(n));
+    saveSelectedCompanies(selected);
+
+    refreshCompanyManageUI();
+    refreshCompanyChecklistIfOpen();
+    const usedNamuwiki = data.sonboSource === 'namuwiki' || data.saengboSource === 'namuwiki';
+    showToast(usedNamuwiki ? '✅ 업데이트됐어요 (일부 비공식 출처 포함).' : '✅ 최신 명단으로 업데이트됐어요.');
+  } catch (e) {
+    showToast('⚠️ 업데이트 중 오류: ' + e.message);
+  }
 }
 
 function renderGroupTabs() {
@@ -660,6 +899,7 @@ function openEdit(idx) {
   const target = getGroups()[idx];
   editingGroupIdx = idx;
   if (target.isCompanyGroup) {
+    editingCompanyPos = null;
     document.getElementById('editGroupName').style.display = 'none';
     document.getElementById('editSaveBtn').style.display = 'none';
     document.getElementById('editTitle').textContent = '보험사 목록 관리';
@@ -703,25 +943,73 @@ function openEdit(idx) {
   document.getElementById('screen-edit').classList.add('active');
 }
 
+function startCompanyRename(category, index) {
+  editingCompanyPos = { category, index };
+  renderCompanyEditScreen();
+  setTimeout(() => {
+    const input = document.getElementById('companyRenameInput');
+    if (input) { input.focus(); input.select(); }
+  }, 0);
+}
+
+function cancelCompanyRename() {
+  editingCompanyPos = null;
+  renderCompanyEditScreen();
+}
+
+function saveCompanyRename(category, index) {
+  const input = document.getElementById('companyRenameInput');
+  const newName = input ? input.value.trim() : '';
+  if (!newName) { showToast('회사명을 입력해주세요.'); return; }
+  const companies = getCompanies();
+  const oldName = companies[category][index];
+  if (newName !== oldName && companies[category].includes(newName)) {
+    showToast('이미 있는 회사예요.'); return;
+  }
+  companies[category][index] = newName;
+  saveCompanies(companies);
+  // 선택돼 있었으면 선택 목록도 이름 갱신
+  const selected = getSelectedCompanies();
+  const selIdx = selected.indexOf(oldName);
+  if (selIdx !== -1) { selected[selIdx] = newName; saveSelectedCompanies(selected); }
+  editingCompanyPos = null;
+  renderCompanyEditScreen();
+  refreshCompanyChecklistIfOpen();
+  showToast('✅ 수정됐어요.');
+}
+
+let editingCompanyPos = null; // {category, index} while renaming
+
 function renderCompanyEditScreen() {
   const companies = getCompanies();
-  let html = '';
+  let html = `
+    <button class="green-btn" style="width:100%;margin-bottom:4px;" onclick="syncCompaniesFromAssociation()">🔄 손보/생보협회 정회원사 업데이트</button>`;
   Object.entries(companies).forEach(([category, names]) => {
     html += `<div class="section-label" style="margin:10px 0 4px;">${category} (${names.length})</div>`;
     names.forEach((name, i) => {
-      const isFirst = i === 0;
-      const isLast = i === names.length - 1;
-      html += `
-        <div class="site-item">
-          <div class="company-order-btns">
-            <button class="company-order-btn" ${isFirst?'disabled':''} onclick="moveCompany('${category}',${i},-1)" title="위로">▲</button>
-            <button class="company-order-btn" ${isLast?'disabled':''} onclick="moveCompany('${category}',${i},1)" title="아래로">▼</button>
+      const isEditing = editingCompanyPos && editingCompanyPos.category === category && editingCompanyPos.index === i;
+      if (isEditing) {
+        html += `
+        <div class="site-item company-item-row" data-category="${category}" data-index="${i}">
+          <span class="company-drag-handle" style="opacity:0.3;">≡</span>
+          <div class="site-info">
+            <input type="text" id="companyRenameInput" value="${name.replace(/"/g,'&quot;')}" autocomplete="new-password"
+              onkeydown="if(event.key==='Enter') saveCompanyRename('${category}',${i}); if(event.key==='Escape') cancelCompanyRename();">
           </div>
+          <button class="green-btn" style="padding:6px 10px;flex-shrink:0;" onclick="saveCompanyRename('${category}',${i})">확인</button>
+          <button class="site-del-btn" onclick="cancelCompanyRename()">✕</button>
+        </div>`;
+      } else {
+        html += `
+        <div class="site-item company-item-row" data-category="${category}" data-index="${i}">
+          <span class="company-drag-handle" onpointerdown="startCompanyDrag(event,'${category}',${i})" title="끌어서 순서 변경">≡</span>
           <div class="site-info">
             <div class="site-name">${name}</div>
           </div>
+          <button class="site-del-btn" style="font-size:15px;" onclick="startCompanyRename('${category}',${i})" title="이름 수정">✏️</button>
           <button class="site-del-btn" onclick="deleteCompany('${category}',${i})">🗑</button>
         </div>`;
+      }
     });
   });
   html += `
@@ -738,6 +1026,7 @@ function renderCompanyEditScreen() {
 }
 
 function closeEdit() {
+  editingCompanyPos = null;
   document.getElementById('screen-edit').classList.remove('active');
   document.getElementById('screen-settings').classList.add('active');
   renderGroupSettingsList();
@@ -964,6 +1253,197 @@ async function addSite(name, url) {
     document.getElementById('siteResults').classList.remove('open');
     document.getElementById('siteSearchInput').value='';
   });
+}
+
+// ─── 금융감독원 조회 사이트 관리 ──────────────────────────────
+function getFssSites() {
+  return JSON.parse(localStorage.getItem('fss_sites') || '[]');
+}
+function saveFssSites(s) { localStorage.setItem('fss_sites', JSON.stringify(s)); }
+
+function renderFssSites() {
+  const el = document.getElementById('fssSiteList');
+  if (!el) return;
+  el.innerHTML = getFssSites().map((s,i) => `
+    <div class="site-item">
+      <input type="checkbox" class="site-check" ${s.enabled?'checked':''} onchange="toggleFssSite(${i})">
+      <div class="site-info">
+        <div class="site-name">${s.name}</div>
+        <div class="site-url" style="font-size:11px;color:var(--text-muted);">${s.rssUrl ? '📡 RSS' : '🔍 크롤링(자동감지)'} · ${s.url}</div>
+      </div>
+      <button class="site-del-btn" onclick="deleteFssSite(${i})">🗑</button>
+    </div>`).join('');
+}
+
+function toggleFssSite(i) { const s=getFssSites(); s[i].enabled=!s[i].enabled; saveFssSites(s); renderFssSites(); }
+function deleteFssSite(i) { const s=getFssSites(); s.splice(i,1); saveFssSites(s); renderFssSites(); showToast('삭제됐어요.'); }
+
+function addFssSiteDirect() {
+  const name = document.getElementById('fssSiteDirectName').value.trim();
+  const url = document.getElementById('fssSiteDirectUrl').value.trim();
+  if (!name) { showToast('이름을 입력해주세요.'); return; }
+  if (!url) { showToast('주소를 입력해주세요.'); return; }
+  const sites = getFssSites();
+  if (sites.find(s=>s.url===url)) { showToast('이미 추가된 사이트예요.'); return; }
+  sites.push({ name, url, enabled: true, rssUrl: null });
+  saveFssSites(sites);
+  renderFssSites();
+  document.getElementById('fssSiteDirectName').value = '';
+  document.getElementById('fssSiteDirectUrl').value = '';
+  showToast(`✅ "${name}" 추가됐어요.`);
+}
+
+// ─── 금융감독원 조회 ──────────────────────────────────────────
+function selectFssPeriod(el) {
+  document.querySelectorAll('#fssPeriodGroup .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  fssPeriodVal = el.dataset.val;
+  document.getElementById('fssDateRange').classList.toggle('open', fssPeriodVal==='custom');
+}
+
+function getFssDateRange() {
+  if (fssPeriodVal==='all') return {start:null,end:null};
+  if (fssPeriodVal==='custom') {
+    const s=document.getElementById('fssStartDate').value;
+    const e=document.getElementById('fssEndDate').value;
+    return {start:s?new Date(s).getTime():null,end:e?new Date(e+'T23:59:59').getTime():null};
+  }
+  const map={'1d':1,'3d':3,'1w':7,'1m':30};
+  const now=new Date();
+  return {start:now.getTime()-(map[fssPeriodVal]||1)*86400000,end:now.getTime()};
+}
+
+function showFssError(msg) {
+  const el=document.getElementById('fssErrorMsg');
+  el.textContent=msg; el.style.display=msg?'block':'none';
+}
+
+async function runFssSearch() {
+  showFssError('');
+  const query = document.getElementById('fssKeyword').value.trim();
+  const activeSites = getFssSites().filter(s=>s.enabled);
+  if (!activeSites.length) { showToast('조회할 사이트를 설정에서 하나 이상 켜주세요.'); return; }
+
+  fssSelectedIds.clear();
+  fssArticles = [];
+  updateFssCountUI();
+  document.getElementById('fssListHeader').classList.remove('visible');
+  document.getElementById('fssList').innerHTML = `<div style="background:white;">${Array(6).fill(`
+    <div style="display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f0f0;">
+      <div class="skeleton" style="width:18px;height:18px;flex-shrink:0;border-radius:3px;margin-top:2px;"></div>
+      <div style="flex:1;"><div class="skeleton" style="height:38px;margin-bottom:8px;"></div><div class="skeleton" style="height:11px;width:40%;"></div></div>
+    </div>`).join('')}</div>`;
+
+  try {
+    const {start,end} = getFssDateRange();
+    const params = new URLSearchParams({ query, sites: JSON.stringify(activeSites) });
+    if (start) params.set('start', start);
+    const res = await fetch('/api/fss?' + params);
+    if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.error || `오류 ${res.status}`); }
+    const data = await res.json();
+
+    // 새로 감지된 RSS 주소 캐싱 (다음 조회부터 재사용)
+    if (data.updatedRss && data.updatedRss.length) {
+      const sites = getFssSites();
+      data.updatedRss.forEach(u => {
+        const idx = sites.findIndex(s => s.url === u.url);
+        if (idx !== -1) sites[idx].rssUrl = u.rssUrl;
+      });
+      saveFssSites(sites);
+      renderFssSites();
+    }
+
+    fssArticles = (data.items || [])
+      .filter(item => isInRange(item.pubDate, start, end))
+      .sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate))
+      .map((item,i) => ({
+        id: i,
+        title: stripHtml(item.title),
+        link: item.link,
+        date: formatDate(item.pubDate),
+        source: item._source || ''
+      }));
+    renderFssList(data.siteStatuses || []);
+  } catch(e) {
+    showFssError(e.message || '조회 중 오류가 발생했습니다.');
+    document.getElementById('fssList').innerHTML = `<div class="no-results">결과를 불러오지 못했습니다.</div>`;
+  }
+}
+
+function renderFssList(siteStatuses) {
+  const list = document.getElementById('fssList');
+  const header = document.getElementById('fssListHeader');
+  if (!fssArticles.length) { list.innerHTML = `<div class="no-results">해당 기간에 자료가 없습니다.</div>`; header.classList.remove('visible'); return; }
+  header.classList.add('visible');
+  document.getElementById('fssCount').textContent = fssArticles.length;
+  updateFssCountUI();
+
+  const failedSites = (siteStatuses||[]).filter(s => !s.ok);
+  const truncatedSites = (siteStatuses||[]).filter(s => s.ok && s.truncated);
+  const statusHtml = (failedSites.length || truncatedSites.length) ? `
+    <div style="background:#fff8e1;border-top:1px solid #ffe082;padding:10px 16px;">
+      ${failedSites.map(s => `
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;">
+          <span>⚠️</span>
+          <span style="color:var(--text-sub);font-weight:600;">${s.name}</span>
+          <span style="color:var(--text-muted);">· ${s.type==='crawl'?'크롤링':'RSS'} 실패 — 확인 필요</span>
+        </div>`).join('')}
+      ${truncatedSites.map(s => `
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;">
+          <span>ℹ️</span>
+          <span style="color:var(--text-sub);font-weight:600;">${s.name}</span>
+          <span style="color:var(--text-muted);">· 페이지 한도까지만 조회함 — 더 오래된 자료가 있을 수 있어요</span>
+        </div>`).join('')}
+    </div>` : '';
+
+  list.innerHTML = `<div style="background:white;">` + fssArticles.map(a => `
+    <div class="article-item" onclick="openFssArticle(${a.id})">
+      <input type="checkbox" ${fssSelectedIds.has(a.id)?'checked':''} onclick="event.stopPropagation();toggleFssCheck(${a.id})">
+      <div class="article-info">
+        <div class="article-title">${a.title}</div>
+        <div class="article-meta">
+          <span class="article-source">${a.source}</span>
+          <span class="article-date">${a.date}</span>
+        </div>
+      </div>
+      <button class="article-share-btn" onclick="event.stopPropagation();shareFssOne(${a.id})">📤</button>
+    </div>`).join('') + `</div>` + statusHtml;
+}
+
+function openFssArticle(id) { window.open(fssArticles[id].link, '_blank'); }
+function toggleFssCheck(id) { if (fssSelectedIds.has(id)) fssSelectedIds.delete(id); else fssSelectedIds.add(id); updateFssCountUI(); }
+function updateFssCountUI() {
+  const n = fssSelectedIds.size;
+  document.getElementById('fssSelectedCount').textContent = `${n}개 선택`;
+  const btn = document.getElementById('fssCopyBtn');
+  btn.disabled = n===0; btn.textContent = `URL 복사 (${n}개)`;
+}
+function toggleFssSelectAll() {
+  if (fssSelectedIds.size === fssArticles.length) fssSelectedIds.clear();
+  else fssArticles.forEach(a => fssSelectedIds.add(a.id));
+  renderFssList();
+}
+async function shareFssOne(id) {
+  const a = fssArticles[id];
+  if (navigator.share) { try { await navigator.share({title:a.title,url:a.link}); } catch(e) {} }
+  else { navigator.clipboard.writeText(`🏛 ${a.title}\n${a.link}`).then(()=>showToast('✅ 복사됐어요!')); }
+}
+function copyFssUrls() {
+  if (!fssSelectedIds.size) return;
+  const selected = [...fssSelectedIds].map(id => fssArticles[id]);
+  const groups = {};
+  selected.forEach(a => { if (!groups[a.source]) groups[a.source]=[]; groups[a.source].push(a); });
+  const text = Object.entries(groups).map(([source, items]) =>
+    items.map(a => `🏛 ${source}\n${a.title}\n${a.link}`).join('\n\n')
+  ).join('\n\n') + '\n.';
+  navigator.clipboard.writeText(text)
+    .then(()=>showToast(`✅ ${fssSelectedIds.size}개 복사 완료!`))
+    .catch(()=>{
+      const ta=document.createElement('textarea');
+      ta.value=text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      showToast(`✅ ${fssSelectedIds.size}개 복사 완료!`);
+    });
 }
 
 function buildRowQuery(i) {
