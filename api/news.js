@@ -1,6 +1,43 @@
 export default async function handler(req, res) {
   const { query, display, start, sort, clientId, clientSecret, type, sites, naverEnabled } = req.query;
 
+  // 보험사 목록 자동 조회 (손해보험협회 + 생명보험협회 공식 정회원사 명단, 실패 시 나무위키 대체)
+  if (type === 'company_sync') {
+    const result = { sonbo: null, saengbo: null, sonboSource: 'official', saengboSource: 'official' };
+    try {
+      result.sonbo = await fetchKniaSonbo();
+    } catch (e1) {
+      try {
+        result.sonbo = (await fetchNamuwikiBoth()).sonbo;
+        result.sonboSource = 'namuwiki';
+      } catch (e2) {
+        return res.status(200).json({ error: `손보사 명단 조회 실패 (공식+나무위키 모두 실패): ${e2.message}` });
+      }
+    }
+    try {
+      result.saengbo = await fetchKliaSaengbo();
+    } catch (e1) {
+      try {
+        result.saengbo = (await fetchNamuwikiBoth()).saengbo;
+        result.saengboSource = 'namuwiki';
+      } catch (e2) {
+        return res.status(200).json({ error: `생보사 명단 조회 실패 (공식+나무위키 모두 실패): ${e2.message}` });
+      }
+    }
+    return res.status(200).json(result);
+  }
+
+  // RSS 자동 감지
+  if (type === 'rss_detect') {
+    try {
+      const siteUrl = req.query.siteUrl;
+      const rssUrl = await detectRss(siteUrl);
+      return res.status(200).json({ rssUrl });
+    } catch(e) {
+      return res.status(200).json({ rssUrl: null });
+    }
+  }
+
   if (!query || !clientId || !clientSecret) {
     return res.status(400).json({ error: '필수 파라미터가 없습니다.' });
   }
@@ -16,17 +53,6 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     } catch(e) {
       return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // RSS 자동 감지
-  if (type === 'rss_detect') {
-    try {
-      const siteUrl = req.query.siteUrl;
-      const rssUrl = await detectRss(siteUrl);
-      return res.status(200).json({ rssUrl });
-    } catch(e) {
-      return res.status(200).json({ rssUrl: null });
     }
   }
 
@@ -81,6 +107,93 @@ export default async function handler(req, res) {
 }
 
 // ─── RSS 자동 감지 ────────────────────────────────────────────
+// ─── 손해보험협회 정회원사 명단 조회 ──────────────────────────
+async function fetchKniaSonbo() {
+  const url = 'https://www.knia.or.kr/m/about/partner/partner01';
+  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  if (!r.ok) throw new Error(`손해보험협회 페이지 접근 실패 (${r.status})`);
+  const html = await r.text();
+
+  // 전략 1: 페이지 내 이동용 <select><option> 목록 (정회원사 이름이 옵션값으로 나열됨)
+  const selectMatch = html.match(/<select[^>]*>[\s\S]{0,8000}?메리츠화재해상보험주식회사[\s\S]{0,8000}?<\/select>/);
+  if (selectMatch) {
+    const names = [...selectMatch[0].matchAll(/<option[^>]*>([^<]+)<\/option>/g)]
+      .map(m => m[1].trim())
+      .filter(n => n && (n.includes('보험') || n.includes('재보험')));
+    if (names.length >= 10) return names;
+  }
+
+  // 전략 2: 정회원사 ~ 준회원사 사이 블록의 <strong> 태그
+  const sectionMatch = html.match(/정회원사([\s\S]*?)준회원사/);
+  if (sectionMatch) {
+    const names = [...sectionMatch[1].matchAll(/<strong>([^<]+)<\/strong>/g)].map(m => m[1].trim());
+    if (names.length >= 10) return names;
+  }
+
+  throw new Error('손해보험협회 명단을 파싱하지 못했습니다 (사이트 구조 변경 의심)');
+}
+
+// ─── 생명보험협회 정회원사 명단 조회 ──────────────────────────
+async function fetchKliaSaengbo() {
+  const url = 'https://www.klia.or.kr/klia/company/member/list.do';
+  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  if (!r.ok) throw new Error(`생명보험협회 페이지 접근 실패 (${r.status})`);
+  const html = await r.text();
+
+  const sectionMatch = html.match(/정회원([\s\S]*?)준회원/);
+  const scope = sectionMatch ? sectionMatch[1] : html;
+
+  // 전략 1: 회사명이 담긴 <h5> 태그
+  let names = [...scope.matchAll(/<h5[^>]*>([^<]+)<\/h5>/g)].map(m => m[1].trim());
+  if (names.length >= 10) return names;
+
+  // 전략 2: 로고 이미지의 alt 속성
+  names = [...scope.matchAll(/<img[^>]+alt="([^"]+)"/g)]
+    .map(m => m[1].trim())
+    .filter(n => n && n.length < 20 && !n.includes('로고') && !n.includes('아이콘'));
+  if (names.length >= 10) return names;
+
+  throw new Error('생명보험협회 명단을 파싱하지 못했습니다 (사이트 구조 변경 의심)');
+}
+
+// ─── 나무위키 대체 조회 (공식 협회 사이트 접근 실패 시 2차 시도, 비공식 출처) ───
+async function fetchNamuwikiBoth() {
+  const url = 'https://namu.wiki/w/%EB%B3%B4%ED%97%98%ED%9A%8C%EC%82%AC'; // 보험회사
+  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  if (!r.ok) throw new Error(`나무위키 접근 실패 (${r.status})`);
+  const html = await r.text();
+
+  const sonboSection = extractSection(html, '손해보험협회', ['생명보험협회', '관련 문서', '분류']);
+  const saengboSection = extractSection(html, '생명보험협회', ['손해보험협회', '관련 문서', '분류']);
+
+  const sonbo = extractTableCompanyNames(sonboSection);
+  const saengbo = extractTableCompanyNames(saengboSection);
+
+  if (sonbo.length < 5 && saengbo.length < 5) {
+    throw new Error('나무위키 명단도 파싱하지 못했습니다 (문서 구조 변경 의심)');
+  }
+  return { sonbo, saengbo };
+}
+
+function extractSection(html, startMarker, endMarkers) {
+  const startIdx = html.indexOf(startMarker);
+  if (startIdx === -1) return '';
+  let endIdx = html.length;
+  endMarkers.forEach(marker => {
+    const idx = html.indexOf(marker, startIdx + startMarker.length);
+    if (idx !== -1 && idx < endIdx) endIdx = idx;
+  });
+  return html.slice(startIdx, endIdx);
+}
+
+function extractTableCompanyNames(sectionHtml) {
+  if (!sectionHtml) return [];
+  const cells = [...sectionHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)]
+    .map(m => m[1].replace(/<[^>]+>/g, '').trim())
+    .filter(t => t && t.length >= 2 && t.length <= 20 && /[가-힣A-Za-z]/.test(t) && !/^[0-9.\s]+$/.test(t));
+  return [...new Set(cells)];
+}
+
 async function detectRss(siteUrl) {
   if (!siteUrl) return null;
   try {
