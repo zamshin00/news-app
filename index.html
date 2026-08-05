@@ -409,7 +409,7 @@ let displayVal = '0'; // '0'=전체, '20','50','100','custom'
 let currentGroupIdx = -1; // -1 = 아무 그룹도 선택 안 된 상태
 let fssArticles = [];
 let fssSelectedIds = new Set();
-let fssPeriodVal = 'all';
+let fssPeriodVal = '1d';
 let editingGroupIdx = -1;
 
 const GROUP_COLORS = ['#03C75A','#378ADD','#D85A30','#9B59B6','#E67E22'];
@@ -516,7 +516,6 @@ function canonicalizeCompanyName(raw) {
   const DEFAULT_FSS_SITES = [
     { name: '보도자료', url: 'https://www.fss.or.kr/fss/bbs/B0000188/list.do?menuNo=200218' },
     { name: '보도자료 설명', url: 'https://www.fss.or.kr/fss/bbs/B0000189/list.do?menuNo=200219' },
-    { name: '과거제재내용 공시', url: 'https://www.fss.or.kr/fss/bbs/B0000159/list.do?menuNo=200173' },
     { name: '검사결과제재', url: 'https://www.fss.or.kr/fss/job/openInfo/list.do?menuNo=200476' },
     { name: '경영유의사항 등 공시', url: 'https://www.fss.or.kr/fss/job/openInfoImpr/list.do?menuNo=200483' },
     { name: '최근 제개정 정보', url: 'https://www.fss.or.kr/fss/job/lrgRegItnInfo/list.do?menuNo=200488' },
@@ -524,14 +523,13 @@ function canonicalizeCompanyName(raw) {
     { name: '행정지도 예고', url: 'https://www.fss.or.kr/fss/job/admnPrvntc/list.do?menuNo=200491' },
     { name: '행정지도 내역', url: 'https://www.fss.or.kr/fss/job/admnstgudc/list.do?menuNo=200492' },
     { name: '감독행정작용 내역', url: 'https://www.fss.or.kr/fss/job/admnstgudcDtls/list.do?menuNo=200494' },
-    { name: '금융감독판례', url: 'https://www.fss.or.kr/fss/job/fvsttPrcdnt/list.do?menuNo=200179' },
-    { name: '분쟁조정사례', url: 'https://www.fss.or.kr/fss/job/fncCnflCase/list.do?menuNo=201195' },
+    { name: '보험업무자료', url: 'https://www.fss.or.kr/fss/bbs/B0000114/list.do?menuNo=200142' },
   ];
   if (!localStorage.getItem('fss_sites')) {
     const initial = DEFAULT_FSS_SITES.map(s => ({ ...s, enabled: true, rssUrl: null }));
     localStorage.setItem('fss_sites', JSON.stringify(initial));
   }
-  fssPeriodVal = 'all';
+  fssPeriodVal = '1d';
   document.querySelectorAll('#fssPeriodGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === fssPeriodVal); });
   document.getElementById('fssEndDate').value = today;
   document.getElementById('fssStartDate').value = today;
