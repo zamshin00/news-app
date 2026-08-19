@@ -437,6 +437,7 @@ input[type="date"] { font-size: 12px; }
     <div id="adminManagePanel" style="display:none;">
       <div class="settings-section-title" style="padding-left:0;">사용자 계정 추가</div>
       <div id="adminAddError" class="error-box" style="display:none;"></div>
+      <input type="text" id="newName" placeholder="이름" autocomplete="off">
       <input type="text" id="newUsername" placeholder="아이디" autocomplete="off">
       <input type="password" id="newPassword" placeholder="비밀번호 (4자 이상)" autocomplete="off" onkeydown="if(event.key==='Enter') addAdminUser()">
       <button class="green-btn" style="width:100%;margin-top:4px;" onclick="addAdminUser()">계정 추가</button>
@@ -519,15 +520,17 @@ function canonicalizeCompanyName(raw) {
 
 // ─── 로그인 관리 ──────────────────────────────────────────────
 function getToken() { return localStorage.getItem('session_token') || ''; }
-function setSession(token, username, role) {
+function setSession(token, username, role, name) {
   localStorage.setItem('session_token', token);
   localStorage.setItem('session_username', username || '');
   localStorage.setItem('session_role', role || 'user');
+  localStorage.setItem('session_name', name || '');
 }
 function clearSession() {
   localStorage.removeItem('session_token');
   localStorage.removeItem('session_username');
   localStorage.removeItem('session_role');
+  localStorage.removeItem('session_name');
 }
 function authHeader() { return { 'Authorization': 'Bearer ' + getToken() }; }
 
@@ -539,8 +542,9 @@ function showApp() {
   document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('appRoot').style.display = 'block';
   const uname = localStorage.getItem('session_username');
+  const displayName = localStorage.getItem('session_name') || uname;
   const el = document.getElementById('loggedInUserText');
-  if (el) el.textContent = uname ? `${uname}님 로그인됨` : '로그인됨';
+  if (el) el.textContent = displayName ? `${displayName}님 로그인됨` : '로그인됨';
 }
 
 async function doLogin() {
@@ -557,7 +561,7 @@ async function doLogin() {
     });
     const data = await res.json();
     if (!res.ok) { errEl.textContent = data.error || '로그인에 실패했습니다.'; errEl.style.display = 'block'; return; }
-    setSession(data.token, data.username, data.role);
+    setSession(data.token, data.username, data.role, data.name);
     if (remember) {
       localStorage.setItem('saved_username', username);
       localStorage.setItem('saved_password', btoa(unescape(encodeURIComponent(password))));
@@ -676,7 +680,7 @@ async function loadAdminUsers() {
       const safe = u.username.replace(/'/g, "\\'");
       return `<div class="site-item">
         <div class="site-info">
-          <div class="site-name">${u.username}</div>
+          <div class="site-name">${u.name ? u.name + ' (' + u.username + ')' : u.username}</div>
           <div class="site-url">${date}</div>
         </div>
         <button class="site-del-btn" onclick="deleteAdminUser('${safe}')">🗑</button>
@@ -688,23 +692,25 @@ async function loadAdminUsers() {
 }
 
 async function addAdminUser() {
+  const name = document.getElementById('newName').value.trim();
   const username = document.getElementById('newUsername').value.trim();
   const password = document.getElementById('newPassword').value;
   const errEl = document.getElementById('adminAddError');
   errEl.style.display = 'none';
-  if (!username || !password) { errEl.textContent = '아이디와 비밀번호를 입력해주세요.'; errEl.style.display = 'block'; return; }
+  if (!name || !username || !password) { errEl.textContent = '이름, 아이디, 비밀번호를 모두 입력해주세요.'; errEl.style.display = 'block'; return; }
   try {
     const res = await fetch('/api/admin-users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...adminAuthHeader() },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password, name })
     });
     const data = await res.json();
     if (res.status === 401 || res.status === 403) { adminLogoutPanel(); return; }
     if (!res.ok) { errEl.textContent = data.error || '추가에 실패했습니다.'; errEl.style.display = 'block'; return; }
+    document.getElementById('newName').value = '';
     document.getElementById('newUsername').value = '';
     document.getElementById('newPassword').value = '';
-    showToast(`✅ "${username}" 계정이 추가됐어요.`);
+    showToast(`✅ "${name}" 계정이 추가됐어요.`);
     loadAdminUsers();
   } catch (e) {
     errEl.textContent = '추가 중 오류가 발생했습니다.'; errEl.style.display = 'block';
