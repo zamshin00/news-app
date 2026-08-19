@@ -1,5 +1,14 @@
+import { requireAuth } from '../lib/auth.js';
+
 export default async function handler(req, res) {
-  const { query, display, start, sort, clientId, clientSecret, type, sites, naverEnabled } = req.query;
+  // 로그인(사용자 또는 관리자)한 경우에만 API 사용 허용
+  const auth = requireAuth(req, res);
+  if (!auth) return;
+
+  const { query, display, start, sort, type, sites, naverEnabled } = req.query;
+  // 네이버 API 키는 더 이상 클라이언트에서 받지 않고 서버 환경변수에서 읽습니다.
+  const clientId = process.env.NAVER_CLIENT_ID;
+  const clientSecret = process.env.NAVER_CLIENT_SECRET;
 
   // 보험사 목록 자동 조회 (손해보험협회 + 생명보험협회 공식 정회원사 명단, 실패 시 나무위키 대체)
   if (type === 'company_sync') {
