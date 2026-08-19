@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   if (!auth) return;
 
   const { query, display, start, sort, type, sites, naverEnabled } = req.query;
-  // 네이버 API 키는 더 이상 클라이언트에서 받지 않고 서버 환경변수에서 읽습니다.
+  // 네이버 API 키는 서버 환경변수(Vercel)에서만 읽습니다.
   const clientId = process.env.NAVER_CLIENT_ID;
   const clientSecret = process.env.NAVER_CLIENT_SECRET;
 
