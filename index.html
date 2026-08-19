@@ -351,6 +351,13 @@ input[type="date"] { font-size: 12px; }
     </div>
   </div>
 
+  <div class="settings-section-title">🔐 관리자</div>
+  <div class="group-list-item" onclick="openAdminScreen()">
+    <div class="group-color-dot" style="background:#666"></div>
+    <div class="group-list-name">사용자 등록</div>
+    <span class="group-list-arrow">›</span>
+  </div>
+
   <div class="settings-section-title">⭐ 검색 즐겨찾기</div>
   <div id="groupSettingsList"></div>
 
@@ -407,6 +414,38 @@ input[type="date"] { font-size: 12px; }
   <div class="edit-body">
     <input type="text" class="group-name-input" id="editGroupName" placeholder="그룹 이름 입력...">
     <div id="editKeywordRows"></div>
+  </div>
+</div>
+
+<!-- 관리자 화면 -->
+<div class="edit-screen" id="screen-admin">
+  <div class="edit-header">
+    <button class="back-btn" onclick="closeAdminScreen()">←</button>
+    <span class="edit-title">사용자 등록</span>
+    <span></span>
+  </div>
+  <div class="edit-body">
+    <!-- 관리자 로그인 -->
+    <div id="adminLoginPanel">
+      <div id="adminLoginError" class="error-box" style="display:none;"></div>
+      <input type="text" id="adminUsername" placeholder="관리자 아이디" autocomplete="off">
+      <input type="password" id="adminPassword" placeholder="관리자 비밀번호" autocomplete="off" onkeydown="if(event.key==='Enter') adminDoLogin()">
+      <button class="green-btn" style="width:100%;margin-top:4px;" onclick="adminDoLogin()">관리자 로그인</button>
+    </div>
+
+    <!-- 계정 관리 (관리자 로그인 후) -->
+    <div id="adminManagePanel" style="display:none;">
+      <div class="settings-section-title" style="padding-left:0;">사용자 계정 추가</div>
+      <div id="adminAddError" class="error-box" style="display:none;"></div>
+      <input type="text" id="newUsername" placeholder="아이디" autocomplete="off">
+      <input type="password" id="newPassword" placeholder="비밀번호 (4자 이상)" autocomplete="off" onkeydown="if(event.key==='Enter') addAdminUser()">
+      <button class="green-btn" style="width:100%;margin-top:4px;" onclick="addAdminUser()">계정 추가</button>
+
+      <div class="settings-section-title" style="padding-left:0;margin-top:20px;">등록된 사용자 목록</div>
+      <div id="adminUserList"></div>
+
+      <button class="gray-btn" style="width:100%;margin-top:16px;" onclick="adminLogoutPanel()">관리자 로그아웃</button>
+    </div>
   </div>
 </div>
 
@@ -480,13 +519,15 @@ function canonicalizeCompanyName(raw) {
 
 // ─── 로그인 관리 ──────────────────────────────────────────────
 function getToken() { return localStorage.getItem('session_token') || ''; }
-function setSession(token, username) {
+function setSession(token, username, role) {
   localStorage.setItem('session_token', token);
   localStorage.setItem('session_username', username || '');
+  localStorage.setItem('session_role', role || 'user');
 }
 function clearSession() {
   localStorage.removeItem('session_token');
   localStorage.removeItem('session_username');
+  localStorage.removeItem('session_role');
 }
 function authHeader() { return { 'Authorization': 'Bearer ' + getToken() }; }
 
@@ -516,7 +557,7 @@ async function doLogin() {
     });
     const data = await res.json();
     if (!res.ok) { errEl.textContent = data.error || '로그인에 실패했습니다.'; errEl.style.display = 'block'; return; }
-    setSession(data.token, data.username);
+    setSession(data.token, data.username, data.role);
     if (remember) {
       localStorage.setItem('saved_username', username);
       localStorage.setItem('saved_password', btoa(unescape(encodeURIComponent(password))));
@@ -554,6 +595,137 @@ function fillSavedCredentials() {
   fillSavedCredentials();
   if (getToken()) showApp(); else showLogin();
 })();
+
+// ─── 관리자(사용자 등록) 화면 ──────────────────────────────────
+function getAdminToken() { return sessionStorage.getItem('admin_token') || ''; }
+function setAdminToken(t) { sessionStorage.setItem('admin_token', t); }
+function clearAdminToken() { sessionStorage.removeItem('admin_token'); }
+function adminAuthHeader() { return { 'Authorization': 'Bearer ' + getAdminToken() }; }
+
+function openAdminScreen() {
+  document.getElementById('screen-settings').classList.remove('active');
+  document.getElementById('screen-admin').classList.add('active');
+
+  // 메인 로그인 자체가 관리자 계정으로 되어있으면, 재입력 없이 바로 관리 화면으로
+  if (localStorage.getItem('session_role') === 'admin') {
+    setAdminToken(getToken());
+    showAdminManagePanel();
+    return;
+  }
+
+  if (getAdminToken()) {
+    showAdminManagePanel();
+  } else {
+    document.getElementById('adminLoginPanel').style.display = 'block';
+    document.getElementById('adminManagePanel').style.display = 'none';
+  }
+}
+
+function closeAdminScreen() {
+  document.getElementById('screen-admin').classList.remove('active');
+  document.getElementById('screen-settings').classList.add('active');
+}
+
+async function adminDoLogin() {
+  const username = document.getElementById('adminUsername').value.trim();
+  const password = document.getElementById('adminPassword').value;
+  const errEl = document.getElementById('adminLoginError');
+  errEl.style.display = 'none';
+  if (!username || !password) { errEl.textContent = '아이디와 비밀번호를 입력해주세요.'; errEl.style.display = 'block'; return; }
+  try {
+    const res = await fetch('/api/admin-login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || '로그인에 실패했습니다.'; errEl.style.display = 'block'; return; }
+    setAdminToken(data.token);
+    document.getElementById('adminUsername').value = '';
+    document.getElementById('adminPassword').value = '';
+    showAdminManagePanel();
+  } catch (e) {
+    errEl.textContent = '로그인 중 오류가 발생했습니다.'; errEl.style.display = 'block';
+  }
+}
+
+function adminLogoutPanel() {
+  clearAdminToken();
+  document.getElementById('adminLoginPanel').style.display = 'block';
+  document.getElementById('adminManagePanel').style.display = 'none';
+}
+
+function showAdminManagePanel() {
+  document.getElementById('adminLoginPanel').style.display = 'none';
+  document.getElementById('adminManagePanel').style.display = 'block';
+  loadAdminUsers();
+}
+
+async function loadAdminUsers() {
+  const listEl = document.getElementById('adminUserList');
+  listEl.innerHTML = '<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:12px;">불러오는 중...</div>';
+  try {
+    const res = await fetch('/api/admin-users', { headers: adminAuthHeader() });
+    if (res.status === 401 || res.status === 403) { adminLogoutPanel(); return; }
+    const data = await res.json();
+    if (!data.users || !data.users.length) {
+      listEl.innerHTML = '<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:12px;">등록된 사용자가 없어요.</div>';
+      return;
+    }
+    listEl.innerHTML = data.users.map(u => {
+      const date = u.createdAt ? new Date(u.createdAt).toLocaleDateString('ko-KR') : '';
+      const safe = u.username.replace(/'/g, "\\'");
+      return `<div class="site-item">
+        <div class="site-info">
+          <div class="site-name">${u.username}</div>
+          <div class="site-url">${date}</div>
+        </div>
+        <button class="site-del-btn" onclick="deleteAdminUser('${safe}')">🗑</button>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = '<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:12px;">불러오지 못했습니다.</div>';
+  }
+}
+
+async function addAdminUser() {
+  const username = document.getElementById('newUsername').value.trim();
+  const password = document.getElementById('newPassword').value;
+  const errEl = document.getElementById('adminAddError');
+  errEl.style.display = 'none';
+  if (!username || !password) { errEl.textContent = '아이디와 비밀번호를 입력해주세요.'; errEl.style.display = 'block'; return; }
+  try {
+    const res = await fetch('/api/admin-users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...adminAuthHeader() },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (res.status === 401 || res.status === 403) { adminLogoutPanel(); return; }
+    if (!res.ok) { errEl.textContent = data.error || '추가에 실패했습니다.'; errEl.style.display = 'block'; return; }
+    document.getElementById('newUsername').value = '';
+    document.getElementById('newPassword').value = '';
+    showToast(`✅ "${username}" 계정이 추가됐어요.`);
+    loadAdminUsers();
+  } catch (e) {
+    errEl.textContent = '추가 중 오류가 발생했습니다.'; errEl.style.display = 'block';
+  }
+}
+
+async function deleteAdminUser(username) {
+  if (!confirm(`"${username}" 계정을 삭제할까요?`)) return;
+  try {
+    const res = await fetch('/api/admin-users', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', ...adminAuthHeader() },
+      body: JSON.stringify({ username })
+    });
+    if (res.status === 401 || res.status === 403) { adminLogoutPanel(); return; }
+    showToast('삭제됐어요.');
+    loadAdminUsers();
+  } catch (e) {
+    showToast('삭제 중 오류가 발생했습니다.');
+  }
+}
 
 (function init() {
   // naver_sites 강제 보정 + 기본 보험 신문사 자동 추가
@@ -627,7 +799,7 @@ function fillSavedCredentials() {
 
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  ['search','settings','edit','fss','history'].forEach(s => {
+  ['search','settings','edit','fss','history','admin'].forEach(s => {
     const el = document.getElementById('screen-'+s);
     if (el) el.classList.remove('active');
   });
