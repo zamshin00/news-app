@@ -11,7 +11,8 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const usernames = (await redis.smembers('users:index')) || [];
       const users = [];
-      for (const uname of usernames) {
+      for (const raw of usernames) {
+        const uname = String(raw);
         const info = await redis.get(`user:${uname}`);
         users.push({ username: uname, name: info?.name || '', createdAt: info?.createdAt || null });
       }
