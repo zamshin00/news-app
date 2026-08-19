@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>네이버 뉴스 수집기</title>
+<title>Audit News Tracker</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 :root {
@@ -59,7 +59,7 @@ body { font-family: -apple-system, 'Noto Sans KR', sans-serif; background: var(-
 .date-range.open { display: flex; }
 .date-range-row { display: flex; align-items: center; gap: 8px; }
 .date-range-row span { font-size: 12px; color: var(--text-muted); }
-input[type="text"], input[type="date"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; color: var(--text); background: var(--surface); outline: none; transition: border 0.15s; -webkit-appearance: none; }
+input[type="text"], input[type="date"], input[type="password"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; color: var(--text); background: var(--surface); outline: none; transition: border 0.15s; -webkit-appearance: none; }
 input:focus { border-color: var(--green); }
 input[type="date"] { font-size: 12px; }
 .list-header { display: none; align-items: center; justify-content: space-between; padding: 8px 16px; background: #fafafa; border-bottom: 1px solid var(--border); position: sticky; top: 96px; z-index: 90; }
@@ -160,13 +160,40 @@ input[type="date"] { font-size: 12px; }
 .history-title { font-size: 13px; font-weight: 500; line-height: 1.4; margin-bottom: 3px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .history-meta { font-size: 11px; color: var(--text-muted); }
 .history-del-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; flex-shrink: 0; padding: 2px; }
+
+/* 로그인 화면 */
+#loginOverlay { position: fixed; inset: 0; background: var(--bg); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 20px; }
+#loginBox { width: 100%; max-width: 340px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 28px 24px; }
+#loginBox h1 { font-size: 18px; font-weight: 900; color: var(--green); text-align: center; margin-bottom: 20px; }
+#loginBox input { margin-bottom: 8px; }
+#loginBox button { width: 100%; padding: 11px; margin-top: 4px; }
+.remember-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.remember-row input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--green); cursor: pointer; }
+.remember-row label { font-size: 12px; color: var(--text-sub); cursor: pointer; }
+#appRoot { display: none; }
 </style>
 </head>
 <body>
 
+<div id="loginOverlay">
+  <div id="loginBox">
+    <h1>Audit News Tracker</h1>
+    <div id="loginError" class="error-box" style="display:none;"></div>
+    <input type="text" id="loginUsername" placeholder="아이디" autocomplete="off">
+    <input type="password" id="loginPassword" placeholder="비밀번호" autocomplete="off" onkeydown="if(event.key==='Enter') doLogin()">
+    <div class="remember-row">
+      <input type="checkbox" id="rememberMe" checked>
+      <label for="rememberMe">아이디/비밀번호 저장</label>
+    </div>
+    <button class="green-btn" onclick="doLogin()">로그인</button>
+    <div style="text-align:center;margin-top:14px;font-size:11px;color:var(--text-muted);">계정은 관리자에게 발급받아 사용해주세요.</div>
+  </div>
+</div>
+
+<div id="appRoot">
 <div class="header">
   <span class="logo">N</span>
-  <span class="logo-sub">뉴스 수집기</span>
+  <span class="logo-sub">Audit News Tracker</span>
 </div>
 
 <div class="tab-bar">
@@ -313,28 +340,14 @@ input[type="date"] { font-size: 12px; }
 
 <!-- 설정 화면 -->
 <div class="screen settings-screen" id="screen-settings">
-  <div class="settings-section-title">🔑 API 인증</div>
+  <div class="settings-section-title">🔑 계정</div>
   <div class="api-box">
     <div class="api-header">
       <div class="api-status">
-        <span class="api-dot" id="apiDot"></span>
-        <span id="apiStatusText">API 키 미입력</span>
+        <span class="api-dot active"></span>
+        <span id="loggedInUserText">로그인됨</span>
       </div>
-      <button class="api-reauth-btn" onclick="toggleApiFields()">재인증</button>
-    </div>
-    <div class="api-fields" id="apiFields">
-      <div class="api-field-row">
-        <span>Client ID</span>
-        <input type="text" id="clientId" placeholder="Client ID 입력" autocomplete="new-password">
-      </div>
-      <div class="api-field-row">
-        <span>Secret</span>
-        <input type="text" id="clientSecret" placeholder="Client Secret 입력" autocomplete="new-password">
-      </div>
-      <div style="display:flex;gap:6px;">
-        <button class="green-btn" onclick="saveApiKeys()" style="flex:1;">저장</button>
-        <button class="gray-btn" onclick="cancelApiFields()" style="flex:1;">취소</button>
-      </div>
+      <button class="api-reauth-btn" onclick="logoutUser()">로그아웃</button>
     </div>
   </div>
 
@@ -381,7 +394,7 @@ input[type="date"] { font-size: 12px; }
     <button class="green-btn" style="white-space:nowrap;padding:8px 14px;" onclick="addFssSiteDirect()">추가</button>
   </div>
 
-  <div style="text-align:center;padding:28px 16px 12px;font-size:11px;color:var(--text-muted);letter-spacing:0.2px;">Directed by Peter_Ryu</div>
+  <div style="text-align:center;padding:28px 16px 12px;font-size:11px;color:var(--text-muted);letter-spacing:0.2px;">Directed by RYU</div>
 </div>
 
 <!-- 편집 화면 -->
@@ -398,6 +411,7 @@ input[type="date"] { font-size: 12px; }
 </div>
 
 <div class="toast" id="toast"></div>
+</div><!-- /#appRoot -->
 
 <script>
 // 지우개 SVG
@@ -464,16 +478,84 @@ function canonicalizeCompanyName(raw) {
   return OFFICIAL_NAME_MAP[raw] || genericCanonicalize(raw);
 }
 
-(function init() {
-  const id = localStorage.getItem('naver_client_id') || '';
-  const secret = localStorage.getItem('naver_client_secret') || '';
-  if (id && secret) {
-    document.getElementById('apiDot').classList.add('active');
-    document.getElementById('apiStatusText').textContent = 'API 연결됨';
-  } else {
-    document.getElementById('apiFields').classList.add('open');
-  }
+// ─── 로그인 관리 ──────────────────────────────────────────────
+function getToken() { return localStorage.getItem('session_token') || ''; }
+function setSession(token, username) {
+  localStorage.setItem('session_token', token);
+  localStorage.setItem('session_username', username || '');
+}
+function clearSession() {
+  localStorage.removeItem('session_token');
+  localStorage.removeItem('session_username');
+}
+function authHeader() { return { 'Authorization': 'Bearer ' + getToken() }; }
 
+function showLogin() {
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('appRoot').style.display = 'none';
+}
+function showApp() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+  const uname = localStorage.getItem('session_username');
+  const el = document.getElementById('loggedInUserText');
+  if (el) el.textContent = uname ? `${uname}님 로그인됨` : '로그인됨';
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const remember = document.getElementById('rememberMe').checked;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  if (!username || !password) { errEl.textContent = '아이디와 비밀번호를 입력해주세요.'; errEl.style.display = 'block'; return; }
+  try {
+    const res = await fetch('/api/user-login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || '로그인에 실패했습니다.'; errEl.style.display = 'block'; return; }
+    setSession(data.token, data.username);
+    if (remember) {
+      localStorage.setItem('saved_username', username);
+      localStorage.setItem('saved_password', btoa(unescape(encodeURIComponent(password))));
+    } else {
+      localStorage.removeItem('saved_username');
+      localStorage.removeItem('saved_password');
+    }
+    showApp();
+  } catch (e) {
+    errEl.textContent = '로그인 중 오류가 발생했습니다.'; errEl.style.display = 'block';
+  }
+}
+
+function logoutUser() {
+  clearSession();
+  showLogin();
+  fillSavedCredentials();
+}
+
+function fillSavedCredentials() {
+  const savedUser = localStorage.getItem('saved_username');
+  const savedPassB64 = localStorage.getItem('saved_password');
+  if (savedUser && savedPassB64) {
+    document.getElementById('loginUsername').value = savedUser;
+    try { document.getElementById('loginPassword').value = decodeURIComponent(escape(atob(savedPassB64))); } catch (e) {}
+    document.getElementById('rememberMe').checked = true;
+  } else {
+    // 저장된 정보가 없으면 입력칸은 비워두고, 체크박스는 기본값(체크됨) 그대로 둠
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
+  }
+}
+
+(function initAuth() {
+  fillSavedCredentials();
+  if (getToken()) showApp(); else showLogin();
+})();
+
+(function init() {
   // naver_sites 강제 보정 + 기본 보험 신문사 자동 추가
   const naverDefault = { name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true };
   const DEFAULT_SITES = [
@@ -723,10 +805,8 @@ function resetCompanies() {
 async function syncCompaniesFromAssociation() {
   showToast('협회 명단 조회 중...');
   try {
-    const clientId = localStorage.getItem('naver_client_id') || '_';
-    const clientSecret = localStorage.getItem('naver_client_secret') || '_';
-    const params = new URLSearchParams({ query: '_', clientId, clientSecret, type: 'company_sync' });
-    const res = await fetch('/api/news?' + params);
+    const params = new URLSearchParams({ query: '_', type: 'company_sync' });
+    const res = await fetch('/api/news?' + params, { headers: authHeader() });
     const data = await res.json();
     if (data.error) { showToast('⚠️ ' + data.error); return; }
     if (!data.sonbo || !data.saengbo) { showToast('⚠️ 명단을 가져오지 못했어요.'); return; }
@@ -1064,24 +1144,6 @@ function saveEdit() {
   closeEdit();
 }
 
-function toggleApiFields() { document.getElementById('apiFields').classList.toggle('open'); }
-function cancelApiFields() {
-  document.getElementById('apiFields').classList.remove('open');
-  document.getElementById('clientId').value = '';
-  document.getElementById('clientSecret').value = '';
-}
-function saveApiKeys() {
-  const id = document.getElementById('clientId').value.trim();
-  const secret = document.getElementById('clientSecret').value.trim();
-  if (!id || !secret) { showToast('ID와 Secret을 모두 입력해주세요.'); return; }
-  localStorage.setItem('naver_client_id', id);
-  localStorage.setItem('naver_client_secret', secret);
-  document.getElementById('apiDot').classList.add('active');
-  document.getElementById('apiStatusText').textContent = 'API 연결됨';
-  document.getElementById('apiFields').classList.remove('open');
-  showToast('✅ API 키가 저장되었습니다.');
-}
-
 function getSites() {
   const saved = JSON.parse(localStorage.getItem('naver_sites') || 'null');
   const naverDefault = { name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true };
@@ -1115,17 +1177,13 @@ function deleteSite(i) { const s=getSites(); s.splice(i,1); saveSites(s); render
 async function searchSite() {
   const query = document.getElementById('siteSearchInput').value.trim();
   if (!query) { showToast('신문사 이름을 입력해주세요.'); return; }
-  const clientId = localStorage.getItem('naver_client_id')||'';
-  const clientSecret = localStorage.getItem('naver_client_secret')||'';
-  if (!clientId||!clientSecret) { showToast('API 키를 먼저 저장해주세요.'); return; }
-
   const el = document.getElementById('siteResults');
   el.innerHTML = '<div class="site-result-header" style="color:var(--text-muted);">검색 중...</div>';
   el.classList.add('open');
 
   try {
-    const params = new URLSearchParams({query, display:20, start:1, clientId, clientSecret, type:'webkr'});
-    const res = await fetch('/api/news?' + params);
+    const params = new URLSearchParams({query, display:20, start:1, type:'webkr'});
+    const res = await fetch('/api/news?' + params, { headers: authHeader() });
     const data = await res.json();
 
     const excludes = ['naver.com','google.com','daum.net','nate.com','zum.com','kakao.com',
@@ -1216,14 +1274,12 @@ async function addSiteDirect() {
   });
 }
 async function detectAndAddSite(name, url, domain, onDone) {
-  const clientId = localStorage.getItem('naver_client_id')||'';
-  const clientSecret = localStorage.getItem('naver_client_secret')||'';
   showToast('RSS 확인 중...');
 
   let rssUrl = null;
   try {
-    const params = new URLSearchParams({query:'_', clientId, clientSecret, type:'rss_detect', siteUrl: url});
-    const res = await fetch('/api/news?' + params);
+    const params = new URLSearchParams({query:'_', type:'rss_detect', siteUrl: url});
+    const res = await fetch('/api/news?' + params, { headers: authHeader() });
     const data = await res.json();
     rssUrl = data.rssUrl || null;
   } catch(e) {}
@@ -1338,7 +1394,7 @@ async function runFssSearch() {
     const {start,end} = getFssDateRange();
     const params = new URLSearchParams({ query, sites: JSON.stringify(activeSites) });
     if (start) params.set('start', start);
-    const res = await fetch('/api/fss?' + params);
+    const res = await fetch('/api/fss?' + params, { headers: authHeader() });
     if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.error || `오류 ${res.status}`); }
     const data = await res.json();
 
@@ -1480,10 +1536,8 @@ async function doDirectSearch() {
 }
 
 async function runSearch(queries) {
-  const clientId=localStorage.getItem('naver_client_id')||'';
-  const clientSecret=localStorage.getItem('naver_client_secret')||'';
   showError('');
-  if (!clientId||!clientSecret) { switchTab('settings'); return showToast('API 키를 먼저 저장해주세요.'); }
+  if (!getToken()) { showLogin(); return; }
   selectedIds.clear(); articles=[]; window._siteStatuses = {};
   updateCountUI();
   document.getElementById('listHeader').classList.remove('visible');
@@ -1503,9 +1557,9 @@ async function runSearch(queries) {
     const naverEnabled=getSites().find(s=>s.fixed)?.enabled !== false;
 
     for (const query of queries) {
-      const params=new URLSearchParams({query,display:getDisplayCount(),start:1,sort:sortVal,clientId,clientSecret,naverEnabled:naverEnabled?'1':'0'});
+      const params=new URLSearchParams({query,display:getDisplayCount(),start:1,sort:sortVal,naverEnabled:naverEnabled?'1':'0'});
       if (sitesParam) params.set('sites', sitesParam);
-      const res=await fetch(`/api/news?${params}`);
+      const res=await fetch(`/api/news?${params}`, { headers: authHeader() });
       if (!res.ok) { const err=await res.json().catch(()=>({})); throw new Error(err.error||`오류 ${res.status}`); }
       const data=await res.json();
       (data.items||[]).forEach(item=>{
