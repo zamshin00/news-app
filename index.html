@@ -668,7 +668,7 @@ async function loadAdminUsers() {
   const listEl = document.getElementById('adminUserList');
   listEl.innerHTML = '<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:12px;">불러오는 중...</div>';
   try {
-    const res = await fetch('/api/admin-users', { headers: adminAuthHeader() });
+    const res = await fetch('/api/admin-users', { headers: adminAuthHeader(), cache: 'no-store' });
     if (res.status === 401 || res.status === 403) { adminLogoutPanel(); return; }
     const data = await res.json();
     if (!data.users || !data.users.length) {
