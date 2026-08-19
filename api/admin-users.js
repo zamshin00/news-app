@@ -1,55 +1,2036 @@
-import bcrypt from 'bcryptjs';
-import { redis } from '../lib/redis.js';
-import { requireAuth, parseBody } from '../lib/auth.js';
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Audit News Tracker</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --green: #03C75A;
+  --green-dark: #02a84b;
+  --green-light: #e8f9f0;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --border: #e4e6ea;
+  --text: #191919;
+  --text-sub: #555;
+  --text-muted: #999;
+  --radius-sm: 8px;
+}
+html, body { height: 100%; }
+body { font-family: -apple-system, 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+.header { position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; height: 48px; gap: 8px; }
+.logo { font-size: 20px; font-weight: 900; color: var(--green); }
+.logo-sub { font-size: 13px; color: var(--text-muted); }
+.tab-bar { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 99; }
+.tab { flex: 1; padding: 11px 0; text-align: center; font-size: 13px; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; }
+.tab.active { color: var(--green); border-bottom: 2px solid var(--green); font-weight: 700; }
+.screen { display: none; }
+.screen.active { display: block; }
 
-export default async function handler(req, res) {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  const admin = requireAuth(req, res, 'admin');
-  if (!admin) return; // requireAuth가 이미 401/403 응답을 보냄
+/* 검색 화면 */
+.search-panel { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.section-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.group-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.group-tab { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; }
+.group-tab.active { background: var(--green); border-color: var(--green); color: white; font-weight: 700; }
+.preset-row { display: flex; align-items: center; gap: 4px; }
+.preset-input { flex: 1; min-width: 0; }
+.op-select { padding: 5px 4px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; color: var(--green); background: var(--green-light); cursor: pointer; flex-shrink: 0; -webkit-appearance: none; text-align: center; }
+.row-op-select { padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; color: var(--green); background: var(--green-light); cursor: pointer; -webkit-appearance: none; }
+.paren { font-size: 15px; font-weight: 700; color: var(--text-muted); flex-shrink: 0; }
+/* 입력창 내부 지우개 */
+.input-wrap { position: relative; flex: 1; min-width: 0; }
+.input-wrap input { width: 100%; padding-right: 34px; }
+.input-clear-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 2px; display: flex; align-items: center; justify-content: center; }
+.input-clear-btn:hover span { color: #333 !important; }
+.preset-search-btn { padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.or-between { font-size: 11px; font-weight: 700; color: var(--text-muted); padding: 2px 0 2px 4px; }
+.search-all-btn { width: 100%; padding: 10px; background: var(--green); color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; }
+.section-divider { height: 1px; background: var(--border); margin: 2px 0; }
+.direct-row { display: flex; gap: 8px; }
+.direct-row input { flex: 1; }
+.option-group { display: flex; flex-direction: column; gap: 4px; }
+.pill-group { display: flex; flex-wrap: wrap; gap: 4px; }
+.pill { padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--text-sub); cursor: pointer; white-space: nowrap; }
+.pill.active { background: var(--green); border-color: var(--green); color: white; font-weight: 700; }
+.date-range { display: none; flex-direction: column; gap: 6px; background: #fafafa; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; margin-top: 2px; }
+.date-range.open { display: flex; }
+.date-range-row { display: flex; align-items: center; gap: 8px; }
+.date-range-row span { font-size: 12px; color: var(--text-muted); }
+input[type="text"], input[type="date"], input[type="password"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; color: var(--text); background: var(--surface); outline: none; transition: border 0.15s; -webkit-appearance: none; }
+input:focus { border-color: var(--green); }
+input[type="date"] { font-size: 12px; }
+.list-header { display: none; align-items: center; justify-content: space-between; padding: 8px 16px; background: #fafafa; border-bottom: 1px solid var(--border); position: sticky; top: 96px; z-index: 90; }
+.list-header.visible { display: flex; }
+.list-meta { display: flex; align-items: center; gap: 8px; }
+.count-badge { background: var(--green); color: white; font-size: 11px; font-weight: 700; border-radius: 20px; padding: 2px 9px; }
+.selected-count { font-size: 12px; color: var(--text-muted); }
+.select-all-btn { font-size: 12px; color: var(--green); font-weight: 700; background: none; border: none; cursor: pointer; padding: 4px; }
+.article-list { padding-bottom: 80px; }
+.article-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #f0f0f0; background: var(--surface); cursor: pointer; }
+.article-item:active { background: #f5f5f5; }
+.article-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; accent-color: var(--green); cursor: pointer; }
+.article-info { flex: 1; min-width: 0; }
+.article-title { font-size: 14px; font-weight: 500; line-height: 1.5; margin-bottom: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.article-meta { display: flex; align-items: center; gap: 6px; }
+.article-source { font-size: 11px; color: var(--green); font-weight: 600; }
+.article-date { font-size: 11px; color: var(--text-muted); }
+.article-share-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px 4px; flex-shrink: 0; opacity: 0.6; }
+.copy-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px; z-index: 100; }
+.btn-copy { width: 100%; padding: 12px; background: #1a1a1a; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-copy:disabled { background: #ccc; cursor: not-allowed; }
 
+/* 설정 화면 */
+.settings-screen { padding-bottom: 40px; }
+.settings-section-title { padding: 16px 16px 6px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; }
+.api-box { background: var(--green-light); border: 1px solid #c3ecd6; border-radius: var(--radius-sm); margin: 0 16px 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+.api-header { display: flex; align-items: center; justify-content: space-between; }
+.api-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-sub); }
+.api-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+.api-dot.active { background: var(--green); }
+.api-reauth-btn { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); background: white; font-size: 11px; color: var(--text-sub); cursor: pointer; }
+.api-fields { display: none; flex-direction: column; gap: 6px; }
+.api-fields.open { display: flex; }
+.api-field-row { display: flex; align-items: center; gap: 8px; }
+.api-field-row span { font-size: 11px; color: var(--text-sub); min-width: 50px; }
+.green-btn { padding: 7px; border-radius: var(--radius-sm); background: var(--green); color: white; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
+.gray-btn { padding: 7px; border-radius: var(--radius-sm); background: #999; color: white; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
+.group-list-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+.group-list-item:active { background: #f5f5f5; }
+.group-color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.group-list-name { font-size: 14px; color: var(--text); }
+.group-list-sub { font-size: 11px; color: var(--text-muted); margin-left: 6px; }
+.group-list-arrow { font-size: 16px; color: var(--text-muted); margin-left: auto; }
+.site-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.site-check { width: 18px; height: 18px; accent-color: var(--green); flex-shrink: 0; }
+.site-info { flex: 1; min-width: 0; }
+.site-name { font-size: 14px; color: var(--text); }
+.site-url { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.site-del-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 18px; }
+.company-order-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+.company-order-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text-sub); cursor: pointer; padding: 1px 6px; font-size: 10px; border-radius: 4px; line-height: 1.4; }
+.company-order-btn:disabled { opacity: 0.25; cursor: default; }
+.company-item-row { transition: transform 0.15s ease; }
+.company-drag-handle { cursor: grab; padding: 4px 10px 4px 2px; color: var(--text-muted); font-size: 18px; touch-action: none; user-select: none; flex-shrink: 0; line-height: 1; }
+.company-item-row.dragging { position: relative; z-index: 20; background: #fbfbfb; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.company-item-row.dragging .company-drag-handle { cursor: grabbing; }
+.site-search-row { display: flex; gap: 8px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.site-search-row input { flex: 1; }
+.site-results { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin: 0 16px 8px; overflow: hidden; display: none; }
+.site-results.open { display: block; }
+.site-result-header { padding: 8px 14px; font-size: 11px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.site-result-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #f5f5f5; }
+.site-result-item:last-child { border-bottom: none; }
+.site-result-name { font-size: 13px; color: var(--text); }
+.site-result-url { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.site-add-btn { padding: 4px 12px; background: var(--green); color: white; border: none; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+/* 편집 화면 */
+.edit-screen { display: none; }
+.edit-screen.active { display: block; }
+.edit-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 90; }
+.back-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-sub); padding: 0 4px; }
+.edit-title { font-size: 15px; font-weight: 700; flex: 1; }
+.edit-save-btn { padding: 6px 16px; background: var(--green); color: white; border: none; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.edit-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.group-name-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; color: var(--text); background: var(--surface); outline: none; }
+.group-name-input:focus { border-color: var(--green); }
+
+/* STATES */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 60px 32px; text-align: center; color: var(--text-muted); }
+.empty-state .icon { font-size: 48px; }
+.empty-state h3 { font-size: 15px; font-weight: 600; color: var(--text-sub); }
+.empty-state p { font-size: 13px; line-height: 1.6; }
+.skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 4px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.error-box { padding: 8px 12px; background: #fff3f3; border: 1px solid #ffcdd2; border-radius: var(--radius-sm); font-size: 12px; color: #c62828; }
+.no-results { padding: 48px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(10px); background: #1a1a1a; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; transition: all 0.25s; pointer-events: none; z-index: 999; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.display-custom-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.display-custom-row input { width: 120px !important; }
+.importance-btn { background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 3px; opacity: 0.35; transition: opacity 0.15s; flex-shrink: 0; line-height: 1; }
+.importance-btn.active { opacity: 1; }
+.history-date-group { padding: 8px 16px 4px; font-size: 11px; font-weight: 700; color: var(--text-muted); background: var(--bg); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.4px; }
+.history-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 16px; border-bottom: 1px solid #f0f0f0; background: white; }
+.history-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.history-info { flex: 1; min-width: 0; }
+.history-title { font-size: 13px; font-weight: 500; line-height: 1.4; margin-bottom: 3px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.history-meta { font-size: 11px; color: var(--text-muted); }
+.history-del-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; flex-shrink: 0; padding: 2px; }
+
+/* 로그인 화면 */
+#loginOverlay { position: fixed; inset: 0; background: var(--bg); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 20px; }
+#loginBox { width: 100%; max-width: 340px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 28px 24px; }
+#loginBox h1 { font-size: 18px; font-weight: 900; color: var(--green); text-align: center; margin-bottom: 20px; }
+#loginBox input { margin-bottom: 8px; }
+#loginBox button { width: 100%; padding: 11px; margin-top: 4px; }
+.remember-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.remember-row input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--green); cursor: pointer; }
+.remember-row label { font-size: 12px; color: var(--text-sub); cursor: pointer; }
+#appRoot { display: none; }
+</style>
+</head>
+<body>
+
+<div id="loginOverlay">
+  <div id="loginBox">
+    <h1>Audit News Tracker</h1>
+    <div id="loginError" class="error-box" style="display:none;"></div>
+    <input type="text" id="loginUsername" placeholder="아이디" autocomplete="off">
+    <input type="password" id="loginPassword" placeholder="비밀번호" autocomplete="off" onkeydown="if(event.key==='Enter') doLogin()">
+    <div class="remember-row">
+      <input type="checkbox" id="rememberMe" checked>
+      <label for="rememberMe">아이디/비밀번호 저장</label>
+    </div>
+    <button class="green-btn" onclick="doLogin()">로그인</button>
+    <div style="text-align:center;margin-top:14px;font-size:11px;color:var(--text-muted);">계정은 관리자에게 발급받아 사용해주세요.</div>
+  </div>
+</div>
+
+<div id="appRoot">
+<div class="header">
+  <span class="logo">DB</span>
+  <span class="logo-sub">Audit News Tracker</span>
+</div>
+
+<div class="tab-bar">
+  <div class="tab active" id="tab-search" onclick="switchTab('search')">🔍 검색(기사)</div>
+  <div class="tab" id="tab-fss" onclick="switchTab('fss')">🏛 금융감독원</div>
+  <div class="tab" id="tab-settings" onclick="switchTab('settings')">⚙️ 설정</div>
+  <div class="tab" id="tab-history" onclick="switchTab('history')">📋 공유이력</div>
+</div>
+
+<!-- 검색 화면 -->
+<div class="screen active" id="screen-search">
+  <div class="search-panel">
+    <div>
+      <div class="section-label" style="margin-bottom:6px">검색 즐겨찾기</div>
+      <div class="group-tabs" id="groupTabs"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px" id="keywordRows"></div>
+    <div class="section-divider"></div>
+    <div class="direct-row">
+      <input type="text" id="keyword" placeholder="직접 검색..." autocomplete="new-password" onkeydown="if(event.key==='Enter') doDirectSearch()">
+      <button style="padding:8px 14px;background:var(--green);color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="doDirectSearch()">검색</button>
+    </div>
+    <div class="option-group">
+      <div class="section-label">정렬</div>
+      <div class="pill-group" id="sortGroup">
+        <button class="pill" data-val="date" onclick="selectSort(this)">최신순</button>
+        <button class="pill" data-val="sim" onclick="selectSort(this)">관련도순</button>
+      </div>
+    </div>
+    <div class="option-group">
+      <div class="section-label">기간</div>
+      <div class="pill-group" id="periodGroup">
+        <button class="pill" data-val="all" onclick="selectPeriod(this)">전체</button>
+        <button class="pill" data-val="1h" onclick="selectPeriod(this)">1시간</button>
+        <button class="pill" data-val="1d" onclick="selectPeriod(this)">1일</button>
+        <button class="pill" data-val="3d" onclick="selectPeriod(this)">3일</button>
+        <button class="pill" data-val="1w" onclick="selectPeriod(this)">1주</button>
+        <button class="pill" data-val="1m" onclick="selectPeriod(this)">1개월</button>
+        <button class="pill" data-val="custom" onclick="selectPeriod(this)">직접입력</button>
+      </div>
+      <div class="date-range" id="dateRange">
+        <div class="date-range-row">
+          <input type="date" id="startDate">
+          <span>~</span>
+          <input type="date" id="endDate">
+        </div>
+      </div>
+    </div>
+    <div class="option-group">
+      <div class="section-label">최대 검색량</div>
+      <div class="pill-group" id="displayGroup">
+        <button class="pill" data-val="0" onclick="selectDisplay(this)">전체</button>
+        <button class="pill" data-val="20" onclick="selectDisplay(this)">20개</button>
+        <button class="pill" data-val="50" onclick="selectDisplay(this)">50개</button>
+        <button class="pill" data-val="100" onclick="selectDisplay(this)">100개</button>
+        <button class="pill display-custom-btn" data-val="custom" onclick="selectDisplay(this)">직접입력</button>
+      </div>
+      <div class="display-custom-row" id="displayCustomRow" style="display:none;">
+        <input type="number" id="displayCustomVal" min="1" max="1000" placeholder="숫자 입력" style="width:120px;" oninput="saveDisplayVal()">
+        <span style="font-size:12px;color:var(--text-muted);">개 (최대 1000)</span>
+      </div>
+    </div>
+    <div id="errorMsg" class="error-box" style="display:none;"></div>
+  </div>
+
+  <div class="list-header" id="listHeader">
+    <div class="list-meta">
+      <span class="count-badge" id="articleCount">0</span>
+      <span class="selected-count" id="selectedCount">0개 선택</span>
+    </div>
+    <button class="select-all-btn" onclick="toggleSelectAll()">전체선택</button>
+  </div>
+
+  <div class="article-list" id="articleList">
+    <div class="empty-state">
+      <div class="icon">📰</div>
+      <h3>뉴스를 검색해보세요</h3>
+      <p>즐겨찾기 키워드를 설정하거나<br>직접 검색어를 입력해주세요.</p>
+    </div>
+  </div>
+
+  <div class="copy-bar">
+    <button class="btn-copy" id="copyBtn" onclick="copyUrls()" disabled>URL 복사 (0개)</button>
+  </div>
+</div>
+
+<!-- 금융감독원 화면 -->
+<div class="screen" id="screen-fss">
+  <div class="search-panel">
+    <div class="direct-row">
+      <input type="text" id="fssKeyword" placeholder="키워드 (비우면 기간 전체 조회)" autocomplete="new-password" onkeydown="if(event.key==='Enter') runFssSearch()">
+      <button style="padding:8px 14px;background:var(--green);color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="runFssSearch()">조회</button>
+    </div>
+    <div class="option-group">
+      <div class="section-label">조회 기간</div>
+      <div class="pill-group" id="fssPeriodGroup">
+        <button class="pill" data-val="all" onclick="selectFssPeriod(this)">전체</button>
+        <button class="pill" data-val="1d" onclick="selectFssPeriod(this)">1일</button>
+        <button class="pill" data-val="3d" onclick="selectFssPeriod(this)">3일</button>
+        <button class="pill" data-val="1w" onclick="selectFssPeriod(this)">1주</button>
+        <button class="pill" data-val="1m" onclick="selectFssPeriod(this)">1개월</button>
+        <button class="pill" data-val="custom" onclick="selectFssPeriod(this)">직접입력</button>
+      </div>
+      <div class="date-range" id="fssDateRange">
+        <div class="date-range-row">
+          <input type="date" id="fssStartDate">
+          <span>~</span>
+          <input type="date" id="fssEndDate">
+        </div>
+      </div>
+    </div>
+    <div id="fssErrorMsg" class="error-box" style="display:none;"></div>
+  </div>
+
+  <div class="list-header" id="fssListHeader">
+    <div class="list-meta">
+      <span class="count-badge" id="fssCount">0</span>
+      <span class="selected-count" id="fssSelectedCount">0개 선택</span>
+    </div>
+    <button class="select-all-btn" onclick="toggleFssSelectAll()">전체선택</button>
+  </div>
+
+  <div class="article-list" id="fssList">
+    <div class="empty-state">
+      <div class="icon">🏛</div>
+      <h3>금융감독원 자료를 조회해보세요</h3>
+      <p>기간을 선택하고 조회를 눌러주세요.<br>키워드를 입력하면 해당 키워드로 검색해요.</p>
+    </div>
+  </div>
+
+  <div class="copy-bar">
+    <button class="btn-copy" id="fssCopyBtn" onclick="copyFssUrls()" disabled>URL 복사 (0개)</button>
+  </div>
+</div>
+
+<!-- 공유이력 화면 -->
+<div class="screen" id="screen-history">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:white;border-bottom:1px solid var(--border);position:sticky;top:96px;z-index:90;">
+    <span style="font-size:13px;font-weight:700;color:var(--text);">공유 이력</span>
+    <button onclick="downloadHistoryCSV()" style="padding:6px 14px;background:var(--green);color:white;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">⬇ CSV 다운로드</button>
+  </div>
+  <div id="historyList" style="padding-bottom:40px;"></div>
+</div>
+
+<!-- 설정 화면 -->
+<div class="screen settings-screen" id="screen-settings">
+  <div class="settings-section-title">🔑 계정</div>
+  <div class="api-box">
+    <div class="api-header">
+      <div class="api-status">
+        <span class="api-dot active"></span>
+        <span id="loggedInUserText">로그인됨</span>
+      </div>
+      <button class="api-reauth-btn" onclick="logoutUser()">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="settings-section-title">🔐 관리자</div>
+  <div class="group-list-item" onclick="openAdminScreen()">
+    <div class="group-color-dot" style="background:#666"></div>
+    <div class="group-list-name">사용자 등록</div>
+    <span class="group-list-arrow">›</span>
+  </div>
+
+  <div class="settings-section-title">⭐ 검색 즐겨찾기</div>
+  <div id="groupSettingsList"></div>
+
+  <div class="settings-section-title" style="margin-top:8px;padding-top:16px;border-top:4px solid var(--bg);">🌐 검색 사이트</div>
+  <div id="siteList"></div>
+
+
+  <!-- 추가 방법 탭 -->
+  <div style="display:flex;border-bottom:1px solid var(--border);background:var(--surface);margin-top:4px;">
+    <div id="siteTab1" onclick="switchSiteTab(1)" style="flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer;">🔍 이름으로 검색</div>
+    <div id="siteTab2" onclick="switchSiteTab(2)" style="flex:1;padding:10px;text-align:center;font-size:13px;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;">✏️ 직접 입력</div>
+  </div>
+
+  <!-- 이름 검색 -->
+  <div id="siteSearchPanel">
+    <div class="site-search-row">
+      <input type="text" id="siteSearchInput" placeholder="신문사 이름 검색... (예: 보험저널)" autocomplete="new-password" onkeydown="if(event.key==='Enter') searchSite()">
+      <button class="green-btn" style="white-space:nowrap;padding:8px 14px;" onclick="searchSite()">검색</button>
+    </div>
+    <div class="site-results" id="siteResults"></div>
+  </div>
+
+  <!-- 직접 입력 -->
+  <div id="siteDirectPanel" style="display:none;">
+    <div class="site-search-row">
+      <input type="text" id="siteDirectName" placeholder="신문사 이름 (예: 보험저널)" autocomplete="new-password">
+    </div>
+    <div class="site-search-row" style="padding-top:0;">
+      <input type="text" id="siteDirectUrl" placeholder="홈페이지 주소 (예: https://insjournal.co.kr)" autocomplete="new-password">
+      <button class="green-btn" style="white-space:nowrap;padding:8px 14px;" onclick="addSiteDirect()">추가</button>
+    </div>
+  </div>
+
+  <div class="settings-section-title" style="margin-top:8px;padding-top:16px;border-top:4px solid var(--bg);">🏛 금융감독원 조회 사이트</div>
+  <div id="fssSiteList"></div>
+  <div class="site-search-row">
+    <input type="text" id="fssSiteDirectName" placeholder="이름 (예: 보도자료)" autocomplete="new-password">
+  </div>
+  <div class="site-search-row" style="padding-top:0;">
+    <input type="text" id="fssSiteDirectUrl" placeholder="list.do 주소 붙여넣기" autocomplete="new-password">
+    <button class="green-btn" style="white-space:nowrap;padding:8px 14px;" onclick="addFssSiteDirect()">추가</button>
+  </div>
+
+  <div style="text-align:center;padding:28px 16px 12px;font-size:11px;color:var(--text-muted);letter-spacing:0.2px;">Directed by RYU</div>
+</div>
+
+<!-- 편집 화면 -->
+<div class="edit-screen" id="screen-edit">
+  <div class="edit-header">
+    <button class="back-btn" onclick="closeEdit()">←</button>
+    <span class="edit-title" id="editTitle">그룹 편집</span>
+    <button class="edit-save-btn" id="editSaveBtn" onclick="saveEdit()">저장</button>
+  </div>
+  <div class="edit-body">
+    <input type="text" class="group-name-input" id="editGroupName" placeholder="그룹 이름 입력...">
+    <div id="editKeywordRows"></div>
+  </div>
+</div>
+
+<!-- 관리자 화면 -->
+<div class="edit-screen" id="screen-admin">
+  <div class="edit-header">
+    <button class="back-btn" onclick="closeAdminScreen()">←</button>
+    <span class="edit-title">사용자 등록</span>
+    <span></span>
+  </div>
+  <div class="edit-body">
+    <!-- 관리자 로그인 -->
+    <div id="adminLoginPanel">
+      <div id="adminLoginError" class="error-box" style="display:none;"></div>
+      <input type="text" id="adminUsername" placeholder="관리자 아이디" autocomplete="off">
+      <input type="password" id="adminPassword" placeholder="관리자 비밀번호" autocomplete="off" onkeydown="if(event.key==='Enter') adminDoLogin()">
+      <button class="green-btn" style="width:100%;margin-top:4px;" onclick="adminDoLogin()">관리자 로그인</button>
+    </div>
+
+    <!-- 계정 관리 (관리자 로그인 후) -->
+    <div id="adminManagePanel" style="display:none;">
+      <div class="settings-section-title" style="padding-left:0;">사용자 계정 추가</div>
+      <div id="adminAddError" class="error-box" style="display:none;"></div>
+      <input type="text" id="newName" placeholder="이름" autocomplete="off">
+      <input type="text" id="newUsername" placeholder="아이디" autocomplete="off">
+      <input type="password" id="newPassword" placeholder="비밀번호 (4자 이상)" autocomplete="off" onkeydown="if(event.key==='Enter') addAdminUser()">
+      <button class="green-btn" style="width:100%;margin-top:4px;" onclick="addAdminUser()">계정 추가</button>
+
+      <div class="settings-section-title" style="padding-left:0;margin-top:20px;">등록된 사용자 목록</div>
+      <div id="adminUserList"></div>
+
+      <button class="gray-btn" style="width:100%;margin-top:16px;" onclick="adminLogoutPanel()">관리자 로그아웃</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+</div><!-- /#appRoot -->
+
+<script>
+// 지우개 SVG
+const ERASER_SVG = `<span style="font-size:14px;color:#999;line-height:1;">✕</span>`;
+
+let articles = [];
+let selectedIds = new Set();
+let sortVal = 'sim';
+let periodVal = '1d';
+let displayVal = '0'; // '0'=전체, '20','50','100','custom'
+let currentGroupIdx = -1; // -1 = 아무 그룹도 선택 안 된 상태
+let fssArticles = [];
+let fssSelectedIds = new Set();
+let fssPeriodVal = '1d';
+let editingGroupIdx = -1;
+
+const GROUP_COLORS = ['#03C75A','#378ADD','#D85A30','#9B59B6','#E67E22'];
+
+const DEFAULT_GROUPS = [
+  ...Array.from({length:4}, (_,i) => ({
+    name: `그룹 ${i+1}`,
+    keywords: ['','','','','','','',''],
+    ops: ['OR','OR','OR','OR'],
+    rowops: ['OR','OR','OR']
+  })),
+  { name: '보험사', isCompanyGroup: true }
+];
+
+// 손보사(DB손보 제외) · 생보사 — 가나다순. 사용자가 설정 화면에서 자유롭게 추가/삭제 가능한 기본값
+const DEFAULT_INSURANCE_COMPANIES = {
+  '손보사': ['농협손보','롯데손보','메리츠화재','삼성화재','서울보증','신한EZ손보','카카오페이손보','코리안리','하나손보','한화손보','현대해상','흥국화재','AIG손보','AXA손보','KB손보'],
+  '생보사': ['교보생명','동양생명','라이나생명','메트라이프생명','미래에셋생명','삼성생명','신한라이프','처브라이프','푸본현대생명','하나생명','한화생명','흥국생명','ABL생명','AIA생명','BNP파리바 카디프생명','DB생명','iM라이프','KB라이프','KDB생명','NH농협생명']
+};
+
+// 협회 공식 명단(정식 상호) → 이 앱에서 쓰는 축약 표기 매핑. 여기 없는 새 회사는 아래 일반 규칙으로 축약.
+const OFFICIAL_NAME_MAP = {
+  '메리츠화재해상보험주식회사':'메리츠화재', '한화손해보험주식회사':'한화손보', '롯데손해보험주식회사':'롯데손보',
+  '흥국화재해상보험주식회사':'흥국화재', '삼성화재해상보험주식회사':'삼성화재', '현대해상화재보험주식회사':'현대해상',
+  'KB손해보험주식회사':'KB손보', 'DB손해보험주식회사':'DB손보', '코리안리재보험주식회사':'코리안리',
+  '서울보증보험주식회사':'서울보증', 'AXA손해보험주식회사':'AXA손보', 'AIG손해보험주식회사':'AIG손보',
+  '하나손해보험주식회사':'하나손보', '농협손해보험주식회사':'농협손보', '(주)카카오페이손해보험':'카카오페이손보',
+  '신한EZ손해보험(주)':'신한EZ손보',
+  '한화생명':'한화생명', 'ABL생명':'ABL생명', '삼성생명':'삼성생명', '흥국생명':'흥국생명', '교보생명':'교보생명',
+  'iM라이프생명':'iM라이프', '미래에셋생명':'미래에셋생명', 'KDB생명':'KDB생명', 'DB생명':'DB생명', '동양생명':'동양생명',
+  '메트라이프생명':'메트라이프생명', 'KB라이프생명':'KB라이프', '신한라이프생명':'신한라이프', '처브라이프생명':'처브라이프',
+  '하나생명':'하나생명', 'BNP파리바카디프생명':'BNP파리바 카디프생명', '푸본현대생명':'푸본현대생명',
+  '라이나생명':'라이나생명', 'AIA생명':'AIA생명', 'NH농협생명':'NH농협생명'
+};
+
+// 매핑에 없는 새 회사명을 위한 일반 축약 규칙 (신설 보험사 대응용)
+function genericCanonicalize(raw) {
+  let n = raw.replace(/\(주\)/g, '').replace(/주식회사/g, '').replace(/\s+/g, '');
+  n = n.replace(/화재해상보험/g, '화재')
+       .replace(/해상화재보험/g, '해상')
+       .replace(/손해보험/g, '손보')
+       .replace(/재보험/g, '')
+       .replace(/화재보험/g, '화재')
+       .replace(/라이프생명/g, '라이프')
+       .replace(/보험$/, '');
+  return n || raw;
+}
+
+function canonicalizeCompanyName(raw) {
+  return OFFICIAL_NAME_MAP[raw] || genericCanonicalize(raw);
+}
+
+// ─── 로그인 관리 ──────────────────────────────────────────────
+function getToken() { return localStorage.getItem('session_token') || ''; }
+function setSession(token, username, role, name) {
+  localStorage.setItem('session_token', token);
+  localStorage.setItem('session_username', username || '');
+  localStorage.setItem('session_role', role || 'user');
+  localStorage.setItem('session_name', name || '');
+}
+function clearSession() {
+  localStorage.removeItem('session_token');
+  localStorage.removeItem('session_username');
+  localStorage.removeItem('session_role');
+  localStorage.removeItem('session_name');
+}
+function authHeader() { return { 'Authorization': 'Bearer ' + getToken() }; }
+
+function showLogin() {
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('appRoot').style.display = 'none';
+}
+function showApp() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+  const uname = localStorage.getItem('session_username');
+  const displayName = localStorage.getItem('session_name') || uname;
+  const el = document.getElementById('loggedInUserText');
+  if (el) el.textContent = displayName ? `${displayName}님 로그인됨` : '로그인됨';
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const remember = document.getElementById('rememberMe').checked;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  if (!username || !password) { errEl.textContent = '아이디와 비밀번호를 입력해주세요.'; errEl.style.display = 'block'; return; }
   try {
-    if (req.method === 'GET') {
-      const usernames = (await redis.smembers('users:index')) || [];
-      const users = [];
-      for (const raw of usernames) {
-        const uname = String(raw);
-        const info = await redis.get(`user:${uname}`);
-        users.push({ username: uname, name: info?.name || '', createdAt: info?.createdAt || null });
-      }
-      users.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-      return res.status(200).json({ users });
+    const res = await fetch('/api/user-login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || '로그인에 실패했습니다.'; errEl.style.display = 'block'; return; }
+    setSession(data.token, data.username, data.role, data.name);
+    if (remember) {
+      localStorage.setItem('saved_username', username);
+      localStorage.setItem('saved_password', btoa(unescape(encodeURIComponent(password))));
+    } else {
+      localStorage.removeItem('saved_username');
+      localStorage.removeItem('saved_password');
     }
-
-    if (req.method === 'POST') {
-      const { username, password, name } = parseBody(req);
-      if (!username || !password || !name) {
-        return res.status(400).json({ error: '이름, 아이디, 비밀번호를 모두 입력해주세요.' });
-      }
-      if (password.length < 4) {
-        return res.status(400).json({ error: '비밀번호는 4자 이상이어야 합니다.' });
-      }
-      const exists = await redis.sismember('users:index', username);
-      if (exists) {
-        return res.status(409).json({ error: '이미 존재하는 아이디입니다.' });
-      }
-      const passwordHash = await bcrypt.hash(password, 10);
-      await redis.set(`user:${username}`, { passwordHash, name, createdAt: Date.now() });
-      await redis.sadd('users:index', username);
-      return res.status(200).json({ ok: true });
-    }
-
-    if (req.method === 'DELETE') {
-      const { username } = parseBody(req);
-      if (!username) {
-        return res.status(400).json({ error: '아이디를 입력해주세요.' });
-      }
-      await redis.del(`user:${username}`);
-      await redis.srem('users:index', username);
-      return res.status(200).json({ ok: true });
-    }
-
-    return res.status(405).json({ error: '지원하지 않는 메서드입니다.' });
+    showApp();
   } catch (e) {
-    return res.status(500).json({ error: '처리 중 오류가 발생했습니다: ' + e.message });
+    errEl.textContent = '로그인 중 오류가 발생했습니다.'; errEl.style.display = 'block';
   }
 }
+
+function logoutUser() {
+  clearSession();
+  showLogin();
+  fillSavedCredentials();
+}
+
+function fillSavedCredentials() {
+  const savedUser = localStorage.getItem('saved_username');
+  const savedPassB64 = localStorage.getItem('saved_password');
+  if (savedUser && savedPassB64) {
+    document.getElementById('loginUsername').value = savedUser;
+    try { document.getElementById('loginPassword').value = decodeURIComponent(escape(atob(savedPassB64))); } catch (e) {}
+    document.getElementById('rememberMe').checked = true;
+  } else {
+    // 저장된 정보가 없으면 입력칸은 비워두고, 체크박스는 기본값(체크됨) 그대로 둠
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
+  }
+}
+
+(function initAuth() {
+  fillSavedCredentials();
+  showLogin(); // 저장된 정보가 있어도 항상 로그인 화면부터 시작
+})();
+
+// ─── 관리자(사용자 등록) 화면 ──────────────────────────────────
+function getAdminToken() { return sessionStorage.getItem('admin_token') || ''; }
+function setAdminToken(t) { sessionStorage.setItem('admin_token', t); }
+function clearAdminToken() { sessionStorage.removeItem('admin_token'); }
+function adminAuthHeader() { return { 'Authorization': 'Bearer ' + getAdminToken() }; }
+
+function openAdminScreen() {
+  document.getElementById('screen-settings').classList.remove('active');
+  document.getElementById('screen-admin').classList.add('active');
+
+  // 메인 로그인 자체가 관리자 계정으로 되어있으면, 재입력 없이 바로 관리 화면으로
+  if (localStorage.getItem('session_role') === 'admin') {
+    setAdminToken(getToken());
+    showAdminManagePanel();
+    return;
+  }
+
+  if (getAdminToken()) {
+    showAdminManagePanel();
+  } else {
+    document.getElementById('adminLoginPanel').style.display = 'block';
+    document.getElementById('adminManagePanel').style.display = 'none';
+  }
+}
+
+function closeAdminScreen() {
+  document.getElementById('screen-admin').classList.remove('active');
+  document.getElementById('screen-settings').classList.add('active');
+}
+
+async function adminDoLogin() {
+  const username = document.getElementById('adminUsername').value.trim();
+  const password = document.getElementById('adminPassword').value;
+  const errEl = document.getElementById('adminLoginError');
+  errEl.style.display = 'none';
+  if (!username || !password) { errEl.textContent = '아이디와 비밀번호를 입력해주세요.'; errEl.style.display = 'block'; return; }
+  try {
+    const res = await fetch('/api/admin-login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || '로그인에 실패했습니다.'; errEl.style.display = 'block'; return; }
+    setAdminToken(data.token);
+    document.getElementById('adminUsername').value = '';
+    document.getElementById('adminPassword').value = '';
+    showAdminManagePanel();
+  } catch (e) {
+    errEl.textContent = '로그인 중 오류가 발생했습니다.'; errEl.style.display = 'block';
+  }
+}
+
+function adminLogoutPanel() {
+  clearAdminToken();
+  document.getElementById('adminLoginPanel').style.display = 'block';
+  document.getElementById('adminManagePanel').style.display = 'none';
+}
+
+function showAdminManagePanel() {
+  document.getElementById('adminLoginPanel').style.display = 'none';
+  document.getElementById('adminManagePanel').style.display = 'block';
+  loadAdminUsers();
+}
+
+async function loadAdminUsers() {
+  const listEl = document.getElementById('adminUserList');
+  listEl.innerHTML = '<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:12px;">불러오는 중...</div>';
+  try {
+    const res = await fetch('/api/admin-users', { headers: adminAuthHeader(), cache: 'no-store' });
+    if (res.status === 401 || res.status === 403) { adminLogoutPanel(); return; }
+    const data = await res.json();
+    if (!data.users || !data.users.length) {
+      listEl.innerHTML = '<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:12px;">등록된 사용자가 없어요.</div>';
+      return;
+    }
+    listEl.innerHTML = data.users.map(u => {
+      const date = u.createdAt ? new Date(u.createdAt).toLocaleDateString('ko-KR') : '';
+      const unameStr = String(u.username);
+      const safe = unameStr.replace(/'/g, "\\'");
+      return `<div class="site-item">
+        <div class="site-info">
+          <div class="site-name">${u.name ? u.name + ' (' + unameStr + ')' : unameStr}</div>
+          <div class="site-url">${date}</div>
+        </div>
+        <button class="site-del-btn" onclick="deleteAdminUser('${safe}')">🗑</button>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = '<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:12px;">불러오지 못했습니다.</div>';
+  }
+}
+
+async function addAdminUser() {
+  const name = document.getElementById('newName').value.trim();
+  const username = document.getElementById('newUsername').value.trim();
+  const password = document.getElementById('newPassword').value;
+  const errEl = document.getElementById('adminAddError');
+  errEl.style.display = 'none';
+  if (!name || !username || !password) { errEl.textContent = '이름, 아이디, 비밀번호를 모두 입력해주세요.'; errEl.style.display = 'block'; return; }
+  try {
+    const res = await fetch('/api/admin-users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...adminAuthHeader() },
+      body: JSON.stringify({ username, password, name })
+    });
+    const data = await res.json();
+    if (res.status === 401 || res.status === 403) { adminLogoutPanel(); return; }
+    if (!res.ok) { errEl.textContent = data.error || '추가에 실패했습니다.'; errEl.style.display = 'block'; return; }
+    document.getElementById('newName').value = '';
+    document.getElementById('newUsername').value = '';
+    document.getElementById('newPassword').value = '';
+    showToast(`✅ "${name}" 계정이 추가됐어요.`);
+    loadAdminUsers();
+  } catch (e) {
+    errEl.textContent = '추가 중 오류가 발생했습니다.'; errEl.style.display = 'block';
+  }
+}
+
+async function deleteAdminUser(username) {
+  if (!confirm(`"${username}" 계정을 삭제할까요?`)) return;
+  try {
+    const res = await fetch('/api/admin-users', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', ...adminAuthHeader() },
+      body: JSON.stringify({ username })
+    });
+    if (res.status === 401 || res.status === 403) { adminLogoutPanel(); return; }
+    showToast('삭제됐어요.');
+    loadAdminUsers();
+  } catch (e) {
+    showToast('삭제 중 오류가 발생했습니다.');
+  }
+}
+
+(function init() {
+  // naver_sites 강제 보정 + 기본 보험 신문사 자동 추가
+  const naverDefault = { name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true };
+  const DEFAULT_SITES = [
+    { name: '뉴스포트',    url: 'https://www.newsport.co.kr',  domain: 'newsport.co.kr',  rssUrl: 'https://www.newsport.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '보험매일',    url: 'https://www.fins.co.kr',      domain: 'fins.co.kr',      rssUrl: 'https://www.fins.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '대한금융신문', url: 'https://www.kbanker.co.kr',   domain: 'kbanker.co.kr',   rssUrl: 'https://www.kbanker.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '보험저널',    url: 'https://www.insjournal.co.kr', domain: 'insjournal.co.kr', rssUrl: 'https://www.insjournal.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '보험일보',    url: 'http://www.insura.net',        domain: 'insura.net',       rssUrl: null, crawl: true, enabled: true, fixed: false },
+    { name: '한국보험신문', url: 'https://www.insnews.co.kr',   domain: 'insnews.co.kr',   rssUrl: 'https://www.insnews.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '보험신보',    url: 'https://www.insweek.co.kr',   domain: 'insweek.co.kr',   rssUrl: 'https://www.insweek.co.kr/rss/allArticle.xml', crawl: false, enabled: true, fixed: false },
+    { name: '한국금융신문', url: 'https://www.fntimes.com',     domain: 'fntimes.com',     rssUrl: null, crawl: true, enabled: true, fixed: false },
+  ];
+
+  const savedSites = JSON.parse(localStorage.getItem('naver_sites') || 'null');
+  if (!savedSites) {
+    // 첫 실행: 네이버 + 기본 사이트 목록 저장
+    localStorage.setItem('naver_sites', JSON.stringify([naverDefault, ...DEFAULT_SITES]));
+  } else {
+    // 네이버 보정
+    const hasNaver = savedSites.find(s => s.url === 'naver' || s.fixed);
+    if (!hasNaver) savedSites.unshift(naverDefault);
+    else { const ni = savedSites.findIndex(s => s.url === 'naver' || s.fixed); savedSites[ni].fixed = true; savedSites[ni].name = '네이버 뉴스'; }
+    // 기본 사이트 중 없는 것만 추가
+    DEFAULT_SITES.forEach(def => {
+      if (!savedSites.find(s => s.domain === def.domain)) savedSites.push(def);
+    });
+    localStorage.setItem('naver_sites', JSON.stringify(savedSites));
+  }
+
+  // currentGroupIdx 항상 -1로 초기화 (아무 그룹도 선택 안 된 상태)
+  currentGroupIdx = -1;
+
+  // 정렬/기간/검색량은 매번 디폴트(관련도순/1일/전체)로 시작
+  sortVal = 'sim'; periodVal = '1d'; displayVal = '0';
+  document.querySelectorAll('#sortGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === sortVal); });
+  document.querySelectorAll('#periodGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === periodVal); });
+  document.querySelectorAll('#displayGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === displayVal); });
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('endDate').value = today;
+  document.getElementById('startDate').value = today;
+  // 금융감독원 기본 조회 사이트 초기화
+  const DEFAULT_FSS_SITES = [
+    { name: '보도자료', url: 'https://www.fss.or.kr/fss/bbs/B0000188/list.do?menuNo=200218' },
+    { name: '보도자료 설명', url: 'https://www.fss.or.kr/fss/bbs/B0000189/list.do?menuNo=200219' },
+    { name: '검사결과제재', url: 'https://www.fss.or.kr/fss/job/openInfo/list.do?menuNo=200476' },
+    { name: '경영유의사항 등 공시', url: 'https://www.fss.or.kr/fss/job/openInfoImpr/list.do?menuNo=200483' },
+    { name: '최근 제개정 정보', url: 'https://www.fss.or.kr/fss/job/lrgRegItnInfo/list.do?menuNo=200488' },
+    { name: '세칙 제개정 예고', url: 'https://www.fss.or.kr/fss/job/lrgRegItnPrvntc/list.do?menuNo=200489' },
+    { name: '행정지도 예고', url: 'https://www.fss.or.kr/fss/job/admnPrvntc/list.do?menuNo=200491' },
+    { name: '행정지도 내역', url: 'https://www.fss.or.kr/fss/job/admnstgudc/list.do?menuNo=200492' },
+    { name: '감독행정작용 내역', url: 'https://www.fss.or.kr/fss/job/admnstgudcDtls/list.do?menuNo=200494' },
+    { name: '보험업무자료', url: 'https://www.fss.or.kr/fss/bbs/B0000114/list.do?menuNo=200142' },
+  ];
+  if (!localStorage.getItem('fss_sites')) {
+    const initial = DEFAULT_FSS_SITES.map(s => ({ ...s, enabled: true, rssUrl: null }));
+    localStorage.setItem('fss_sites', JSON.stringify(initial));
+  }
+  fssPeriodVal = '1d';
+  document.querySelectorAll('#fssPeriodGroup .pill').forEach(p => { p.classList.toggle('active', p.dataset.val === fssPeriodVal); });
+  document.getElementById('fssEndDate').value = today;
+  document.getElementById('fssStartDate').value = today;
+  renderFssSites();
+
+  renderGroupTabs();
+  renderKeywordRows();
+  renderGroupSettingsList();
+  renderSites();
+})();
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  ['search','settings','edit','fss','history','admin'].forEach(s => {
+    const el = document.getElementById('screen-'+s);
+    if (el) el.classList.remove('active');
+  });
+  document.getElementById('tab-'+tab)?.classList.add('active');
+  document.getElementById('screen-'+tab)?.classList.add('active');
+  if (tab === 'history') renderHistory();
+}
+
+function getGroups() {
+  let groups = JSON.parse(localStorage.getItem('naver_groups_v3') || 'null') || DEFAULT_GROUPS;
+  // 그룹5를 보험사 체크리스트 구조로 마이그레이션 (구버전 데이터 대응)
+  if (!groups[4] || !groups[4].isCompanyGroup) {
+    groups[4] = { name: '보험사', isCompanyGroup: true };
+    saveGroups(groups);
+  }
+  return groups;
+}
+function saveGroups(g) { localStorage.setItem('naver_groups_v3', JSON.stringify(g)); }
+
+function getSelectedCompanies() {
+  return JSON.parse(localStorage.getItem('naver_group5_selected') || '[]');
+}
+function saveSelectedCompanies(arr) {
+  localStorage.setItem('naver_group5_selected', JSON.stringify(arr));
+}
+
+function getCompanies() {
+  const saved = JSON.parse(localStorage.getItem('naver_group5_companies') || 'null');
+  if (saved && saved['손보사'] && saved['생보사']) return saved;
+  const fresh = JSON.parse(JSON.stringify(DEFAULT_INSURANCE_COMPANIES));
+  saveCompanies(fresh);
+  return fresh;
+}
+function saveCompanies(obj) {
+  localStorage.setItem('naver_group5_companies', JSON.stringify(obj));
+}
+
+function addCompany() {
+  const category = document.getElementById('companyAddCategory').value;
+  const name = document.getElementById('companyAddName').value.trim();
+  if (!name) { showToast('회사명을 입력해주세요.'); return; }
+  const companies = getCompanies();
+  if (companies[category].includes(name)) { showToast('이미 있는 회사예요.'); return; }
+  companies[category].push(name);
+  saveCompanies(companies);
+  document.getElementById('companyAddName').value = '';
+  refreshCompanyManageUI();
+  refreshCompanyChecklistIfOpen();
+  showToast(`✅ "${name}" 추가됐어요.`);
+}
+
+function moveCompany(category, index, dir) {
+  const companies = getCompanies();
+  const arr = companies[category];
+  const newIndex = index + dir;
+  if (newIndex < 0 || newIndex >= arr.length) return;
+  [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+  saveCompanies(companies);
+  refreshCompanyManageUI();
+  refreshCompanyChecklistIfOpen();
+}
+
+// ─── 보험사 목록 끌어서 순서 변경 (Pointer Events, 마우스+터치 공용) ───
+let companyDragState = null;
+
+function startCompanyDrag(e, category, index) {
+  e.preventDefault();
+  const handle = e.currentTarget;
+  const item = handle.closest('.company-item-row');
+  if (!item) return;
+  const list = item.parentElement;
+  const items = Array.from(list.querySelectorAll('.company-item-row'))
+    .filter(el => el.dataset.category === category);
+  const rects = items.map(el => el.getBoundingClientRect());
+  companyDragState = {
+    category, items, rects,
+    fromIndex: index, currentIndex: index,
+    item, handle,
+    startY: e.clientY,
+    itemHeight: rects[index].height
+  };
+  item.classList.add('dragging');
+  item.style.transition = 'none';
+  try { handle.setPointerCapture(e.pointerId); } catch(err) {}
+  handle.addEventListener('pointermove', onCompanyDragMove);
+  handle.addEventListener('pointerup', onCompanyDragEnd);
+  handle.addEventListener('pointercancel', onCompanyDragEnd);
+}
+
+function onCompanyDragMove(e) {
+  const s = companyDragState;
+  if (!s) return;
+  const deltaY = e.clientY - s.startY;
+  s.item.style.transform = `translateY(${deltaY}px)`;
+
+  const draggedCenter = s.rects[s.fromIndex].top + s.rects[s.fromIndex].height / 2 + deltaY;
+  let newIndex = s.fromIndex;
+  s.rects.forEach((r, i) => {
+    if (i === s.fromIndex) return;
+    const center = r.top + r.height / 2;
+    if (draggedCenter > center && i > newIndex) newIndex = i;
+    if (draggedCenter < center && i < newIndex) newIndex = i;
+  });
+
+  if (newIndex !== s.currentIndex) {
+    s.items.forEach((el, i) => {
+      if (i === s.fromIndex) return;
+      let shift = 0;
+      if (newIndex > s.fromIndex && i > s.fromIndex && i <= newIndex) shift = -s.itemHeight;
+      else if (newIndex < s.fromIndex && i < s.fromIndex && i >= newIndex) shift = s.itemHeight;
+      el.style.transform = shift ? `translateY(${shift}px)` : '';
+    });
+    s.currentIndex = newIndex;
+  }
+}
+
+function onCompanyDragEnd(e) {
+  const s = companyDragState;
+  if (!s) return;
+  s.handle.removeEventListener('pointermove', onCompanyDragMove);
+  s.handle.removeEventListener('pointerup', onCompanyDragEnd);
+  s.handle.removeEventListener('pointercancel', onCompanyDragEnd);
+  s.items.forEach(el => { el.style.transform = ''; el.style.transition = ''; });
+  s.item.classList.remove('dragging');
+
+  if (s.currentIndex !== s.fromIndex) {
+    const companies = getCompanies();
+    const arr = companies[s.category];
+    const [moved] = arr.splice(s.fromIndex, 1);
+    arr.splice(s.currentIndex, 0, moved);
+    saveCompanies(companies);
+    refreshCompanyChecklistIfOpen();
+  }
+  companyDragState = null;
+  refreshCompanyManageUI();
+}
+
+function deleteCompany(category, index) {
+  const companies = getCompanies();
+  const removed = companies[category].splice(index, 1)[0];
+  saveCompanies(companies);
+  // 선택돼 있었으면 선택 목록에서도 제거
+  const selected = getSelectedCompanies().filter(n => n !== removed);
+  saveSelectedCompanies(selected);
+  refreshCompanyManageUI();
+  refreshCompanyChecklistIfOpen();
+  showToast('삭제됐어요.');
+}
+
+function refreshCompanyChecklistIfOpen() {
+  // 검색 탭에서 그룹5(보험사)를 보고 있으면 즉시 반영
+  const groups = getGroups();
+  if (currentGroupIdx !== -1 && groups[currentGroupIdx]?.isCompanyGroup) {
+    renderKeywordRows();
+  }
+}
+
+function refreshCompanyManageUI() {
+  // 설정 > 보험사 편집 화면이 열려 있으면 즉시 반영
+  const editScreen = document.getElementById('screen-edit');
+  if (editScreen.classList.contains('active')) {
+    const g = getGroups()[editingGroupIdx];
+    if (g && g.isCompanyGroup) renderCompanyEditScreen();
+  }
+}
+
+function resetCompanies() {
+  if (!confirm('보험사 목록을 기본값으로 초기화할까요? 직접 추가/삭제/순서변경한 내용이 사라져요.')) return;
+  saveCompanies(JSON.parse(JSON.stringify(DEFAULT_INSURANCE_COMPANIES)));
+  refreshCompanyManageUI();
+  refreshCompanyChecklistIfOpen();
+  showToast('초기화됐어요.');
+}
+
+async function syncCompaniesFromAssociation() {
+  showToast('협회 명단 조회 중...');
+  try {
+    const params = new URLSearchParams({ query: '_', type: 'company_sync' });
+    const res = await fetch('/api/news?' + params, { headers: authHeader() });
+    const data = await res.json();
+    if (data.error) { showToast('⚠️ ' + data.error); return; }
+    if (!data.sonbo || !data.saengbo) { showToast('⚠️ 명단을 가져오지 못했어요.'); return; }
+
+    const newSonbo = [...new Set(data.sonbo.map(canonicalizeCompanyName))].filter(n => n && n !== 'DB손보');
+    const newSaengbo = [...new Set(data.saengbo.map(canonicalizeCompanyName))].filter(Boolean);
+
+    const current = getCompanies();
+    const diff = (oldArr, newArr) => ({
+      added: newArr.filter(n => !oldArr.includes(n)),
+      removed: oldArr.filter(n => !newArr.includes(n))
+    });
+    const sonboDiff = diff(current['손보사'], newSonbo);
+    const saengboDiff = diff(current['생보사'], newSaengbo);
+    const totalChanges = sonboDiff.added.length + sonboDiff.removed.length + saengboDiff.added.length + saengboDiff.removed.length;
+
+    if (totalChanges === 0) { showToast('✅ 이미 최신 상태예요.'); return; }
+
+    let msg = '협회 정회원사 기준으로 목록을 업데이트합니다 (정회원사만 유지, DB손보 제외).\n';
+    if (data.sonboSource === 'namuwiki') msg += '\n⚠️ 손보사: 협회 홈페이지 개편으로 업데이트 불가, 나무위키로 업데이트 진행. 실제와 다를 경우 수동 업데이트 필요.';
+    if (data.saengboSource === 'namuwiki') msg += '\n⚠️ 생보사: 협회 홈페이지 개편으로 업데이트 불가, 나무위키로 업데이트 진행. 실제와 다를 경우 수동 업데이트 필요.';
+    if (sonboDiff.added.length) msg += `\n[손보사 추가] ${sonboDiff.added.join(', ')}`;
+    if (sonboDiff.removed.length) msg += `\n[손보사 삭제] ${sonboDiff.removed.join(', ')}`;
+    if (saengboDiff.added.length) msg += `\n[생보사 추가] ${saengboDiff.added.join(', ')}`;
+    if (saengboDiff.removed.length) msg += `\n[생보사 삭제] ${saengboDiff.removed.join(', ')}`;
+    msg += '\n\n진행할까요?';
+    if (!confirm(msg)) return;
+
+    saveCompanies({ '손보사': newSonbo, '생보사': newSaengbo });
+
+    // 삭제된 회사가 선택 목록에 있었으면 함께 정리
+    const removedNames = new Set([...sonboDiff.removed, ...saengboDiff.removed]);
+    const selected = getSelectedCompanies().filter(n => !removedNames.has(n));
+    saveSelectedCompanies(selected);
+
+    refreshCompanyManageUI();
+    refreshCompanyChecklistIfOpen();
+    const usedNamuwiki = data.sonboSource === 'namuwiki' || data.saengboSource === 'namuwiki';
+    showToast(usedNamuwiki ? '✅ 업데이트됐어요 (일부 비공식 출처 포함).' : '✅ 최신 명단으로 업데이트됐어요.');
+  } catch (e) {
+    showToast('⚠️ 업데이트 중 오류: ' + e.message);
+  }
+}
+
+function renderGroupTabs() {
+  const groups = getGroups();
+  document.getElementById('groupTabs').innerHTML = groups.map((g,i) =>
+    `<div class="group-tab ${i===currentGroupIdx?'active':''}" onclick="selectGroup(${i})">${g.name}</div>`
+  ).join('');
+  // 키워드 rows: 아무 그룹도 선택 안 됐으면 공란
+  if (currentGroupIdx === -1) {
+    document.getElementById('keywordRows').innerHTML = `<div style="padding:12px 0;text-align:center;color:var(--text-muted);font-size:13px;">즐겨찾기 그룹을 선택해주세요</div>`;
+  }
+}
+
+function selectGroup(idx) {
+  currentGroupIdx = idx;
+  renderGroupTabs();
+  renderKeywordRows();
+}
+
+function renderKeywordRows() {
+  if (currentGroupIdx === -1) return;
+  const g = getGroups()[currentGroupIdx];
+  const container = document.getElementById('keywordRows');
+  if (g.isCompanyGroup) {
+    renderCompanyChecklist(container);
+    return;
+  }
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    const ka = g.keywords[i*2] || '';
+    const kb = g.keywords[i*2+1] || '';
+    const op = g.ops[i] || 'OR';
+    const rowop = g.rowops?.[i] || 'OR';
+    html += `
+      <div class="preset-row">
+        <span class="paren">(</span>
+        <div class="input-wrap">
+          <input type="text" id="k${i}a" value="${ka.replace(/"/g,'&quot;')}" placeholder="키워드${i*2+1}" autocomplete="new-password">
+          <button class="input-clear-btn" onclick="clearInput('k${i}a')" title="지우기">${ERASER_SVG}</button>
+        </div>
+        <select class="op-select" id="kop${i}">
+          <option value="OR" ${op==='OR'?'selected':''}>OR</option>
+          <option value="AND" ${op==='AND'?'selected':''}>AND</option>
+        </select>
+        <div class="input-wrap">
+          <input type="text" id="k${i}b" value="${kb.replace(/"/g,'&quot;')}" placeholder="키워드${i*2+2}" autocomplete="new-password">
+          <button class="input-clear-btn" onclick="clearInput('k${i}b')" title="지우기">${ERASER_SVG}</button>
+        </div>
+        <span class="paren">)</span>
+        <button class="preset-search-btn" onclick="searchRow(${i})">🔍</button>
+      </div>
+      ${i < 3 ? `<div style="padding:2px 0 2px 4px;"><select class="row-op-select" id="krowop${i}"><option value="OR" ${rowop==='OR'?'selected':''}>OR</option><option value="AND" ${rowop==='AND'?'selected':''}>AND</option></select></div>` : ''}`;
+  }
+  html += `<button class="search-all-btn" onclick="searchAll()">즐겨찾기 전체 검색</button>`;
+  container.innerHTML = html;
+}
+
+function renderCompanyChecklist(container) {
+  const selected = new Set(getSelectedCompanies());
+  const companies = getCompanies();
+  let html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+  Object.entries(companies).forEach(([category, names]) => {
+    html += `<div class="section-label" style="margin-top:2px;">${category} (${names.length})</div>`;
+    html += `<div class="pill-group">`;
+    names.forEach(name => {
+      const safeName = name.replace(/'/g, "\\'");
+      html += `<button class="pill ${selected.has(name)?'active':''}" onclick="toggleCompany('${safeName}')">${name}</button>`;
+    });
+    html += `</div>`;
+  });
+  const selCount = selected.size;
+  html += `<div style="display:flex;gap:6px;margin-top:4px;">
+      <button class="search-all-btn" style="flex:1;" onclick="searchSelectedCompanies()">선택 회사 검색 (${selCount}개, OR)</button>
+      <button class="gray-btn" style="flex-shrink:0;padding:10px 14px;" onclick="clearSelectedCompanies()">선택 초기화</button>
+    </div>`;
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function toggleCompany(name) {
+  const selected = new Set(getSelectedCompanies());
+  if (selected.has(name)) selected.delete(name); else selected.add(name);
+  saveSelectedCompanies([...selected]);
+  renderKeywordRows();
+}
+
+function clearSelectedCompanies() {
+  saveSelectedCompanies([]);
+  renderKeywordRows();
+}
+
+async function searchSelectedCompanies() {
+  const selected = getSelectedCompanies();
+  if (!selected.length) { showToast('회사를 선택해주세요.'); return; }
+  await runSearch(selected);
+}
+
+function clearInput(id) {
+  const el = document.getElementById(id);
+  if (el) { el.value = ''; el.focus(); }
+}
+
+function renderGroupSettingsList() {
+  const groups = getGroups();
+  document.getElementById('groupSettingsList').innerHTML = groups.map((g,i) => {
+    if (g.isCompanyGroup) {
+      const totalCount = Object.values(getCompanies()).reduce((sum, arr) => sum + arr.length, 0);
+      return `
+        <div class="group-list-item" onclick="openEdit(${i})">
+          <div class="group-color-dot" style="background:${GROUP_COLORS[i%GROUP_COLORS.length]}"></div>
+          <div class="group-list-name">${g.name}</div>
+          <span class="group-list-sub">회사 ${totalCount}개</span>
+          <span class="group-list-arrow">›</span>
+        </div>`;
+    }
+    const count = g.keywords.filter(k=>k.trim()).length;
+    return `
+      <div class="group-list-item" onclick="openEdit(${i})">
+        <div class="group-color-dot" style="background:${GROUP_COLORS[i%GROUP_COLORS.length]}"></div>
+        <div class="group-list-name">${g.name}</div>
+        <span class="group-list-sub">키워드 ${count}개</span>
+        <span class="group-list-arrow">›</span>
+      </div>`;
+  }).join('');
+}
+
+function openEdit(idx) {
+  const target = getGroups()[idx];
+  editingGroupIdx = idx;
+  if (target.isCompanyGroup) {
+    editingCompanyPos = null;
+    document.getElementById('editGroupName').style.display = 'none';
+    document.getElementById('editSaveBtn').style.display = 'none';
+    document.getElementById('editTitle').textContent = '보험사 목록 관리';
+    renderCompanyEditScreen();
+    document.getElementById('screen-settings').classList.remove('active');
+    document.getElementById('screen-edit').classList.add('active');
+    return;
+  }
+  document.getElementById('editGroupName').style.display = '';
+  document.getElementById('editSaveBtn').style.display = '';
+  const g = target;
+  document.getElementById('editGroupName').value = g.name;
+  document.getElementById('editTitle').textContent = g.name;
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    const ka = g.keywords[i*2] || '';
+    const kb = g.keywords[i*2+1] || '';
+    const op = g.ops[i] || 'OR';
+    html += `
+      <div class="preset-row">
+        <span class="paren">(</span>
+        <div class="input-wrap">
+          <input type="text" id="ek${i}a" value="${ka.replace(/"/g,'&quot;')}" placeholder="키워드${i*2+1}" autocomplete="new-password">
+          <button class="input-clear-btn" onclick="clearInput('ek${i}a')" title="지우기">${ERASER_SVG}</button>
+        </div>
+        <select class="op-select" id="ekop${i}">
+          <option value="OR" ${op==='OR'?'selected':''}>OR</option>
+          <option value="AND" ${op==='AND'?'selected':''}>AND</option>
+        </select>
+        <div class="input-wrap">
+          <input type="text" id="ek${i}b" value="${kb.replace(/"/g,'&quot;')}" placeholder="키워드${i*2+2}" autocomplete="new-password">
+          <button class="input-clear-btn" onclick="clearInput('ek${i}b')" title="지우기">${ERASER_SVG}</button>
+        </div>
+        <span class="paren">)</span>
+      </div>
+      ${i < 3 ? `<div style="padding:2px 0 2px 4px;"><select class="row-op-select" id="ekrowop${i}"><option value="OR" ${(g.rowops?.[i]||'OR')==='OR'?'selected':''}>OR</option><option value="AND" ${(g.rowops?.[i]||'OR')==='AND'?'selected':''}>AND</option></select></div>` : ''}`;
+  }
+  html += `<button onclick="resetKeywords()" style="width:100%;margin-top:8px;padding:10px;background:#fff3f3;color:#c62828;border:1px solid #ffcdd2;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;">🗑 그룹${idx+1} 초기화</button>`;
+  document.getElementById('editKeywordRows').innerHTML = html;
+  document.getElementById('screen-settings').classList.remove('active');
+  document.getElementById('screen-edit').classList.add('active');
+}
+
+function startCompanyRename(category, index) {
+  editingCompanyPos = { category, index };
+  renderCompanyEditScreen();
+  setTimeout(() => {
+    const input = document.getElementById('companyRenameInput');
+    if (input) { input.focus(); input.select(); }
+  }, 0);
+}
+
+function cancelCompanyRename() {
+  editingCompanyPos = null;
+  renderCompanyEditScreen();
+}
+
+function saveCompanyRename(category, index) {
+  const input = document.getElementById('companyRenameInput');
+  const newName = input ? input.value.trim() : '';
+  if (!newName) { showToast('회사명을 입력해주세요.'); return; }
+  const companies = getCompanies();
+  const oldName = companies[category][index];
+  if (newName !== oldName && companies[category].includes(newName)) {
+    showToast('이미 있는 회사예요.'); return;
+  }
+  companies[category][index] = newName;
+  saveCompanies(companies);
+  // 선택돼 있었으면 선택 목록도 이름 갱신
+  const selected = getSelectedCompanies();
+  const selIdx = selected.indexOf(oldName);
+  if (selIdx !== -1) { selected[selIdx] = newName; saveSelectedCompanies(selected); }
+  editingCompanyPos = null;
+  renderCompanyEditScreen();
+  refreshCompanyChecklistIfOpen();
+  showToast('✅ 수정됐어요.');
+}
+
+let editingCompanyPos = null; // {category, index} while renaming
+
+function renderCompanyEditScreen() {
+  const companies = getCompanies();
+  let html = `
+    <button class="green-btn" style="width:100%;margin-bottom:4px;" onclick="syncCompaniesFromAssociation()">🔄 손보/생보협회 정회원사 업데이트</button>`;
+  Object.entries(companies).forEach(([category, names]) => {
+    html += `<div class="section-label" style="margin:10px 0 4px;">${category} (${names.length})</div>`;
+    names.forEach((name, i) => {
+      const isEditing = editingCompanyPos && editingCompanyPos.category === category && editingCompanyPos.index === i;
+      if (isEditing) {
+        html += `
+        <div class="site-item company-item-row" data-category="${category}" data-index="${i}">
+          <span class="company-drag-handle" style="opacity:0.3;">≡</span>
+          <div class="site-info">
+            <input type="text" id="companyRenameInput" value="${name.replace(/"/g,'&quot;')}" autocomplete="new-password"
+              onkeydown="if(event.key==='Enter') saveCompanyRename('${category}',${i}); if(event.key==='Escape') cancelCompanyRename();">
+          </div>
+          <button class="green-btn" style="padding:6px 10px;flex-shrink:0;" onclick="saveCompanyRename('${category}',${i})">확인</button>
+          <button class="site-del-btn" onclick="cancelCompanyRename()">✕</button>
+        </div>`;
+      } else {
+        html += `
+        <div class="site-item company-item-row" data-category="${category}" data-index="${i}">
+          <span class="company-drag-handle" onpointerdown="startCompanyDrag(event,'${category}',${i})" title="끌어서 순서 변경">≡</span>
+          <div class="site-info">
+            <div class="site-name">${name}</div>
+          </div>
+          <button class="site-del-btn" style="font-size:15px;" onclick="startCompanyRename('${category}',${i})" title="이름 수정">✏️</button>
+          <button class="site-del-btn" onclick="deleteCompany('${category}',${i})">🗑</button>
+        </div>`;
+      }
+    });
+  });
+  html += `
+    <div class="site-search-row" style="padding-left:0;padding-right:0;">
+      <select id="companyAddCategory" style="flex-shrink:0;width:90px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);">
+        <option value="손보사">손보사</option>
+        <option value="생보사">생보사</option>
+      </select>
+      <input type="text" id="companyAddName" placeholder="회사명 입력... (예: 캐롯손보)" autocomplete="new-password" onkeydown="if(event.key==='Enter') addCompany()">
+      <button class="green-btn" style="white-space:nowrap;padding:8px 14px;" onclick="addCompany()">추가</button>
+    </div>
+    <button onclick="resetCompanies()" style="width:100%;margin-top:8px;padding:10px;background:#fff3f3;color:#c62828;border:1px solid #ffcdd2;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;">🗑 기본 목록으로 초기화</button>`;
+  document.getElementById('editKeywordRows').innerHTML = html;
+}
+
+function closeEdit() {
+  editingCompanyPos = null;
+  document.getElementById('screen-edit').classList.remove('active');
+  document.getElementById('screen-settings').classList.add('active');
+  renderGroupSettingsList();
+  renderGroupTabs();
+  renderKeywordRows();
+}
+
+function resetKeywords() {
+  if (!confirm('이 그룹의 키워드를 초기화할까요?')) return;
+  const nameEl = document.getElementById('editGroupName');
+  if (nameEl) nameEl.value = `그룹 ${editingGroupIdx+1}`;
+  for (let i = 0; i < 4; i++) {
+    const a = document.getElementById(`ek${i}a`); if (a) a.value = '';
+    const b = document.getElementById(`ek${i}b`); if (b) b.value = '';
+    const op = document.getElementById(`ekop${i}`); if (op) op.value = 'OR';
+    const rowop = document.getElementById(`ekrowop${i}`); if (rowop) rowop.value = 'OR';
+  }
+  showToast('초기화됐어요.');
+}
+
+function saveEdit() {
+  const groups = getGroups();
+  const g = groups[editingGroupIdx];
+  if (g.isCompanyGroup) { closeEdit(); return; }
+  g.name = document.getElementById('editGroupName').value.trim() || g.name;
+  g.rowops = g.rowops || ['OR','OR','OR'];
+  for (let i = 0; i < 4; i++) {
+    g.keywords[i*2] = document.getElementById(`ek${i}a`)?.value || '';
+    g.keywords[i*2+1] = document.getElementById(`ek${i}b`)?.value || '';
+    g.ops[i] = document.getElementById(`ekop${i}`)?.value || 'OR';
+    if (i < 3) g.rowops[i] = document.getElementById(`ekrowop${i}`)?.value || 'OR';
+  }
+  saveGroups(groups);
+  showToast('✅ 저장됐어요.');
+  closeEdit();
+}
+
+function getSites() {
+  const saved = JSON.parse(localStorage.getItem('naver_sites') || 'null');
+  const naverDefault = { name: '네이버 뉴스', url: 'naver', domain: '', enabled: true, fixed: true };
+  if (!saved) return [naverDefault];
+  // 저장된 목록에서 naver url 항목 찾기 (fixed 여부 무관)
+  const hasNaver = saved.find(s => s.url === 'naver' || s.fixed);
+  if (!hasNaver) saved.unshift(naverDefault);
+  else { // 있으면 fixed:true 강제 보정
+    const idx = saved.findIndex(s => s.url === 'naver' || s.fixed);
+    saved[idx].fixed = true; saved[idx].name = '네이버 뉴스';
+  }
+  return saved;
+}
+function saveSites(s) { localStorage.setItem('naver_sites', JSON.stringify(s)); }
+
+function renderSites() {
+  document.getElementById('siteList').innerHTML = getSites().map((s,i) => `
+    <div class="site-item">
+      <input type="checkbox" class="site-check" ${s.enabled?'checked':''} onchange="toggleSite(${i})">
+      <div class="site-info">
+        <div class="site-name">${s.name}</div>
+        <div class="site-url" style="font-size:11px;color:var(--text-muted);">${s.fixed ? 'API 검색' : s.rssUrl ? '📡 RSS 검색' : s.crawl ? '🔍 크롤링 검색 (개편시 재등록 필요)' : '🔍 웹검색'} · ${s.domain||s.url}</div>
+      </div>
+      ${s.fixed?'':`<button class="site-del-btn" onclick="deleteSite(${i})">🗑</button>`}
+    </div>`).join('');
+}
+
+function toggleSite(i) { const s=getSites(); s[i].enabled=!s[i].enabled; saveSites(s); renderSites(); }
+function deleteSite(i) { const s=getSites(); s.splice(i,1); saveSites(s); renderSites(); showToast('삭제됐어요.'); }
+
+async function searchSite() {
+  const query = document.getElementById('siteSearchInput').value.trim();
+  if (!query) { showToast('신문사 이름을 입력해주세요.'); return; }
+  const el = document.getElementById('siteResults');
+  el.innerHTML = '<div class="site-result-header" style="color:var(--text-muted);">검색 중...</div>';
+  el.classList.add('open');
+
+  try {
+    const params = new URLSearchParams({query, display:20, start:1, type:'webkr'});
+    const res = await fetch('/api/news?' + params, { headers: authHeader() });
+    const data = await res.json();
+
+    const excludes = ['naver.com','google.com','daum.net','nate.com','zum.com','kakao.com',
+      'youtube.com','facebook.com','instagram.com','twitter.com','wikipedia.org','tistory.com','blogspot.com'];
+
+    // 도메인별 그룹핑 → 루트 도메인만 대표로 선택 (기사 URL 제외)
+    const domainMap = new Map();
+    (data.items||[]).forEach(item => {
+      const rawUrl = item.link || '';
+      const domainFull = rawUrl.replace(/https?:\/\//, '').split('/')[0];
+      const domain = domainFull.replace(/^www\./, '');
+      if (!domain) return;
+      if (excludes.some(e => domain.includes(e))) return;
+      // 경로가 너무 긴 URL은 기사일 가능성이 높으므로 제외 (홈페이지는 경로가 짧음)
+      const path = rawUrl.replace(/https?:\/\/[^/]+/, '');
+      const pathDepth = path.split('/').filter(Boolean).length;
+      if (pathDepth > 1) return; // 경로 depth 2 이상은 기사로 판단, 스킵
+      if (!domainMap.has(domain)) {
+        const title = (item.title||'').replace(/<[^>]*>/g,'').replace(/\s*[-|:].*/, '').trim();
+        domainMap.set(domain, { domain, title, rootUrl: 'https://' + domainFull });
+      }
+    });
+
+    // domainMap이 비면 depth 제한 없이 재시도 (홈페이지 URL이 없는 경우)
+    if (domainMap.size === 0) {
+      (data.items||[]).forEach(item => {
+        const rawUrl = item.link || '';
+        const domainFull = rawUrl.replace(/https?:\/\//, '').split('/')[0];
+        const domain = domainFull.replace(/^www\./, '');
+        if (!domain) return;
+        if (excludes.some(e => domain.includes(e))) return;
+        if (!domainMap.has(domain)) {
+          const title = (item.title||'').replace(/<[^>]*>/g,'').replace(/\s*[-|:].*/, '').trim();
+          domainMap.set(domain, { domain, title, rootUrl: 'https://' + domainFull });
+        }
+      });
+    }
+
+    const items = [...domainMap.values()].slice(0, 5);
+
+    if (!items.length) {
+      el.innerHTML = '<div class="site-result-header">검색 결과가 없어요.<br><span style="font-size:12px;color:var(--text-muted);">직접 입력 탭에서 URL을 입력해주세요.</span></div>';
+      return;
+    }
+
+    el.innerHTML = '<div class="site-result-header">' + query + ' 검색 결과 — 맞는 사이트를 선택하세요</div>'
+      + items.map(function(item) {
+        var safeName = item.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        var safeUrl = item.rootUrl.replace(/'/g, "\\'");
+        return '<div class="site-result-item">'
+          + '<div style="flex:1;min-width:0;">'
+          + '<div class="site-result-name">' + (item.title||item.domain) + '</div>'
+          + '<div class="site-result-url">' + item.domain + '</div>'
+          + '</div>'
+          + '<button class="site-add-btn" onclick="addSite(\'' + safeName + '\',\'' + safeUrl + '\')">추가</button>'
+          + '</div>';
+      }).join('');
+
+  } catch(e) {
+    el.innerHTML = '<div class="site-result-header" style="color:#c62828;">검색 중 오류가 발생했어요.</div>';
+  }
+}
+
+function switchSiteTab(tab) {
+  document.getElementById('siteSearchPanel').style.display = tab===1 ? 'block' : 'none';
+  document.getElementById('siteDirectPanel').style.display = tab===2 ? 'block' : 'none';
+  document.getElementById('siteTab1').style.cssText = tab===1
+    ? 'flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer;'
+    : 'flex:1;padding:10px;text-align:center;font-size:13px;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;';
+  document.getElementById('siteTab2').style.cssText = tab===2
+    ? 'flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer;'
+    : 'flex:1;padding:10px;text-align:center;font-size:13px;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;';
+}
+
+async function addSiteDirect() {
+  const name = document.getElementById('siteDirectName').value.trim();
+  const url = document.getElementById('siteDirectUrl').value.trim();
+  if (!name) { showToast('신문사 이름을 입력해주세요.'); return; }
+  if (!url) { showToast('홈페이지 주소를 입력해주세요.'); return; }
+  const domain = url.replace(/https?:\/\//,'').split('/')[0];
+  if (!domain) { showToast('올바른 URL을 입력해주세요.'); return; }
+  if (domain.includes('naver.com')||domain.includes('google.com')) { showToast('이 사이트는 추가할 수 없어요.'); return; }
+  const sites = getSites();
+  if (sites.find(s=>s.domain===domain||s.url===url)) { showToast('이미 추가된 사이트예요.'); return; }
+  await detectAndAddSite(name, url, domain, () => {
+    document.getElementById('siteDirectName').value='';
+    document.getElementById('siteDirectUrl').value='';
+  });
+}
+async function detectAndAddSite(name, url, domain, onDone) {
+  showToast('RSS 확인 중...');
+
+  let rssUrl = null;
+  try {
+    const params = new URLSearchParams({query:'_', type:'rss_detect', siteUrl: url});
+    const res = await fetch('/api/news?' + params, { headers: authHeader() });
+    const data = await res.json();
+    rssUrl = data.rssUrl || null;
+  } catch(e) {}
+
+  const sites = getSites();
+  if (rssUrl) {
+    // RSS 있음 → 바로 추가
+    sites.push({name, url, domain, rssUrl, enabled:true, fixed:false});
+    saveSites(sites); renderSites();
+    if (onDone) onDone();
+    showToast(`✅ "${name}" 추가됐어요. (RSS)`);
+  } else {
+    // RSS 없음 → 크롤링 선택 안내
+    showToast(`"${name}"은 RSS 미지원 — 크롤링으로 추가됐어요.`);
+    sites.push({name, url, domain, rssUrl: null, crawl: true, enabled:true, fixed:false});
+    saveSites(sites); renderSites();
+    if (onDone) onDone();
+  }
+}
+
+async function addSite(name, url) {
+  const domain = url.replace(/https?:\/\//,'').split('/')[0];
+  if (domain.includes('naver.com')||domain.includes('google.com')) { showToast('이 사이트는 추가할 수 없어요.'); return; }
+  const sites = getSites();
+  if (sites.find(s=>s.url===url||s.domain===domain)) { showToast('이미 추가된 사이트예요.'); return; }
+  await detectAndAddSite(name, url, domain, () => {
+    document.getElementById('siteResults').classList.remove('open');
+    document.getElementById('siteSearchInput').value='';
+  });
+}
+
+// ─── 금융감독원 조회 사이트 관리 ──────────────────────────────
+function getFssSites() {
+  return JSON.parse(localStorage.getItem('fss_sites') || '[]');
+}
+function saveFssSites(s) { localStorage.setItem('fss_sites', JSON.stringify(s)); }
+
+function renderFssSites() {
+  const el = document.getElementById('fssSiteList');
+  if (!el) return;
+  el.innerHTML = getFssSites().map((s,i) => `
+    <div class="site-item">
+      <input type="checkbox" class="site-check" ${s.enabled?'checked':''} onchange="toggleFssSite(${i})">
+      <div class="site-info">
+        <div class="site-name">${s.name}</div>
+        <div class="site-url" style="font-size:11px;color:var(--text-muted);">${s.rssUrl ? '📡 RSS' : '🔍 크롤링(자동감지)'} · ${s.url}</div>
+      </div>
+      <button class="site-del-btn" onclick="deleteFssSite(${i})">🗑</button>
+    </div>`).join('');
+}
+
+function toggleFssSite(i) { const s=getFssSites(); s[i].enabled=!s[i].enabled; saveFssSites(s); renderFssSites(); }
+function deleteFssSite(i) { const s=getFssSites(); s.splice(i,1); saveFssSites(s); renderFssSites(); showToast('삭제됐어요.'); }
+
+function addFssSiteDirect() {
+  const name = document.getElementById('fssSiteDirectName').value.trim();
+  const url = document.getElementById('fssSiteDirectUrl').value.trim();
+  if (!name) { showToast('이름을 입력해주세요.'); return; }
+  if (!url) { showToast('주소를 입력해주세요.'); return; }
+  const sites = getFssSites();
+  if (sites.find(s=>s.url===url)) { showToast('이미 추가된 사이트예요.'); return; }
+  sites.push({ name, url, enabled: true, rssUrl: null });
+  saveFssSites(sites);
+  renderFssSites();
+  document.getElementById('fssSiteDirectName').value = '';
+  document.getElementById('fssSiteDirectUrl').value = '';
+  showToast(`✅ "${name}" 추가됐어요.`);
+}
+
+// ─── 금융감독원 조회 ──────────────────────────────────────────
+function selectFssPeriod(el) {
+  document.querySelectorAll('#fssPeriodGroup .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  fssPeriodVal = el.dataset.val;
+  document.getElementById('fssDateRange').classList.toggle('open', fssPeriodVal==='custom');
+}
+
+function getFssDateRange() {
+  if (fssPeriodVal==='all') return {start:null,end:null};
+  if (fssPeriodVal==='custom') {
+    const s=document.getElementById('fssStartDate').value;
+    const e=document.getElementById('fssEndDate').value;
+    return {start:s?new Date(s).getTime():null,end:e?new Date(e+'T23:59:59').getTime():null};
+  }
+  const map={'1d':1,'3d':3,'1w':7,'1m':30};
+  const now=new Date();
+  return {start:now.getTime()-(map[fssPeriodVal]||1)*86400000,end:now.getTime()};
+}
+
+function showFssError(msg) {
+  const el=document.getElementById('fssErrorMsg');
+  el.textContent=msg; el.style.display=msg?'block':'none';
+}
+
+async function runFssSearch() {
+  showFssError('');
+  const query = document.getElementById('fssKeyword').value.trim();
+  const activeSites = getFssSites().filter(s=>s.enabled);
+  if (!activeSites.length) { showToast('조회할 사이트를 설정에서 하나 이상 켜주세요.'); return; }
+
+  fssSelectedIds.clear();
+  fssArticles = [];
+  updateFssCountUI();
+  document.getElementById('fssListHeader').classList.remove('visible');
+  document.getElementById('fssList').innerHTML = `<div style="background:white;">${Array(6).fill(`
+    <div style="display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f0f0;">
+      <div class="skeleton" style="width:18px;height:18px;flex-shrink:0;border-radius:3px;margin-top:2px;"></div>
+      <div style="flex:1;"><div class="skeleton" style="height:38px;margin-bottom:8px;"></div><div class="skeleton" style="height:11px;width:40%;"></div></div>
+    </div>`).join('')}</div>`;
+
+  try {
+    const {start,end} = getFssDateRange();
+    const params = new URLSearchParams({ query, sites: JSON.stringify(activeSites) });
+    if (start) params.set('start', start);
+    const res = await fetch('/api/fss?' + params, { headers: authHeader() });
+    if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.error || `오류 ${res.status}`); }
+    const data = await res.json();
+
+    // 새로 감지된 RSS 주소 캐싱 (다음 조회부터 재사용)
+    if (data.updatedRss && data.updatedRss.length) {
+      const sites = getFssSites();
+      data.updatedRss.forEach(u => {
+        const idx = sites.findIndex(s => s.url === u.url);
+        if (idx !== -1) sites[idx].rssUrl = u.rssUrl;
+      });
+      saveFssSites(sites);
+      renderFssSites();
+    }
+
+    fssArticles = (data.items || [])
+      .filter(item => isInRange(item.pubDate, start, end))
+      .sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate))
+      .map((item,i) => ({
+        id: i,
+        title: stripHtml(item.title),
+        link: item.link,
+        date: formatDate(item.pubDate),
+        source: item._source || ''
+      }));
+    renderFssList(data.siteStatuses || []);
+  } catch(e) {
+    showFssError(e.message || '조회 중 오류가 발생했습니다.');
+    document.getElementById('fssList').innerHTML = `<div class="no-results">결과를 불러오지 못했습니다.</div>`;
+  }
+}
+
+function renderFssList(siteStatuses) {
+  const list = document.getElementById('fssList');
+  const header = document.getElementById('fssListHeader');
+  if (!fssArticles.length) { list.innerHTML = `<div class="no-results">해당 기간에 자료가 없습니다.</div>`; header.classList.remove('visible'); return; }
+  header.classList.add('visible');
+  document.getElementById('fssCount').textContent = fssArticles.length;
+  updateFssCountUI();
+
+  const failedSites = (siteStatuses||[]).filter(s => !s.ok);
+  const truncatedSites = (siteStatuses||[]).filter(s => s.ok && s.truncated);
+  const statusHtml = (failedSites.length || truncatedSites.length) ? `
+    <div style="background:#fff8e1;border-top:1px solid #ffe082;padding:10px 16px;">
+      ${failedSites.map(s => `
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;">
+          <span>⚠️</span>
+          <span style="color:var(--text-sub);font-weight:600;">${s.name}</span>
+          <span style="color:var(--text-muted);">· ${s.type==='crawl'?'크롤링':'RSS'} 실패 — 확인 필요</span>
+        </div>`).join('')}
+      ${truncatedSites.map(s => `
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;">
+          <span>ℹ️</span>
+          <span style="color:var(--text-sub);font-weight:600;">${s.name}</span>
+          <span style="color:var(--text-muted);">· 페이지 한도까지만 조회함 — 더 오래된 자료가 있을 수 있어요</span>
+        </div>`).join('')}
+    </div>` : '';
+
+  list.innerHTML = `<div style="background:white;">` + fssArticles.map(a => `
+    <div class="article-item" onclick="openFssArticle(${a.id})">
+      <input type="checkbox" ${fssSelectedIds.has(a.id)?'checked':''} onclick="event.stopPropagation();toggleFssCheck(${a.id})">
+      <div class="article-info">
+        <div class="article-title">${a.title}</div>
+        <div class="article-meta">
+          <span class="article-source">${a.source}</span>
+          <span class="article-date">${a.date}</span>
+        </div>
+      </div>
+      <button class="article-share-btn" onclick="event.stopPropagation();shareFssOne(${a.id})">📤</button>
+    </div>`).join('') + `</div>` + statusHtml;
+}
+
+function openFssArticle(id) { window.open(fssArticles[id].link, '_blank'); }
+function toggleFssCheck(id) { if (fssSelectedIds.has(id)) fssSelectedIds.delete(id); else fssSelectedIds.add(id); updateFssCountUI(); }
+function updateFssCountUI() {
+  const n = fssSelectedIds.size;
+  document.getElementById('fssSelectedCount').textContent = `${n}개 선택`;
+  const btn = document.getElementById('fssCopyBtn');
+  btn.disabled = n===0; btn.textContent = `URL 복사 (${n}개)`;
+}
+function toggleFssSelectAll() {
+  if (fssSelectedIds.size === fssArticles.length) fssSelectedIds.clear();
+  else fssArticles.forEach(a => fssSelectedIds.add(a.id));
+  renderFssList();
+}
+async function shareFssOne(id) {
+  const a = fssArticles[id];
+  if (navigator.share) { try { await navigator.share({title:a.title,url:a.link}); } catch(e) {} }
+  else { navigator.clipboard.writeText(`🏛 ${a.title}\n${a.link}`).then(()=>showToast('✅ 복사됐어요!')); }
+}
+function copyFssUrls() {
+  if (!fssSelectedIds.size) return;
+  const selected = [...fssSelectedIds].map(id => fssArticles[id]);
+  const groups = {};
+  selected.forEach(a => { if (!groups[a.source]) groups[a.source]=[]; groups[a.source].push(a); });
+  const text = Object.entries(groups).map(([source, items]) =>
+    items.map(a => `🏛 ${source}\n${a.title}\n${a.link}`).join('\n\n')
+  ).join('\n\n') + '\n.';
+  navigator.clipboard.writeText(text)
+    .then(()=>showToast(`✅ ${fssSelectedIds.size}개 복사 완료!`))
+    .catch(()=>{
+      const ta=document.createElement('textarea');
+      ta.value=text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      showToast(`✅ ${fssSelectedIds.size}개 복사 완료!`);
+    });
+}
+
+function buildRowQuery(i) {
+  const a = document.getElementById(`k${i}a`)?.value.trim()||'';
+  const b = document.getElementById(`k${i}b`)?.value.trim()||'';
+  const op = document.getElementById(`kop${i}`)?.value||'OR';
+  if (!a&&!b) return [];
+  if (!a) return [b];
+  if (!b) return [a];
+  if (op==='AND') return [`${a} ${b}`];
+  return [a,b];
+}
+
+async function searchRow(i) {
+  const q = buildRowQuery(i);
+  if (!q.length) { showToast('키워드를 입력해주세요.'); return; }
+  await runSearch(q);
+}
+
+async function searchAll() {
+  const queries=[];
+  for (let i=0;i<4;i++) {
+    const rowQueries = buildRowQuery(i);
+    rowQueries.forEach(q=>{if(q&&!queries.includes(q))queries.push(q);});
+  }
+  if (!queries.length) { showToast('키워드를 입력해주세요.'); return; }
+  await runSearch(queries);
+}
+
+async function doDirectSearch() {
+  const kw = document.getElementById('keyword').value.trim();
+  if (!kw) { showError('키워드를 입력해주세요.'); return; }
+  await runSearch([kw]);
+}
+
+async function runSearch(queries) {
+  showError('');
+  if (!getToken()) { showLogin(); return; }
+  selectedIds.clear(); articles=[]; window._siteStatuses = {};
+  updateCountUI();
+  document.getElementById('listHeader').classList.remove('visible');
+  document.getElementById('articleList').innerHTML=`<div style="background:white;">${Array(6).fill(`
+    <div style="display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f0f0;">
+      <div class="skeleton" style="width:18px;height:18px;flex-shrink:0;border-radius:3px;margin-top:2px;"></div>
+      <div style="flex:1;"><div class="skeleton" style="height:38px;margin-bottom:8px;"></div><div class="skeleton" style="height:11px;width:40%;"></div></div>
+    </div>`).join('')}</div>`;
+  try {
+    const {start,end}=getDateRange();
+    const allItems=[]; const seenTitles=new Set();
+
+    // 활성화된 개별 사이트 목록 (naver fixed 제외)
+    const activeSites=getSites().filter(s=>s.enabled&&!s.fixed&&s.domain);
+    const sitesParam=activeSites.length?JSON.stringify(activeSites):null;
+    // 네이버 뉴스 활성화 여부
+    const naverEnabled=getSites().find(s=>s.fixed)?.enabled !== false;
+
+    for (const query of queries) {
+      const params=new URLSearchParams({query,display:getDisplayCount(),start:1,sort:sortVal,naverEnabled:naverEnabled?'1':'0'});
+      if (sitesParam) params.set('sites', sitesParam);
+      const res=await fetch(`/api/news?${params}`, { headers: authHeader() });
+      if (!res.ok) { const err=await res.json().catch(()=>({})); throw new Error(err.error||`오류 ${res.status}`); }
+      const data=await res.json();
+      (data.items||[]).forEach(item=>{
+        const title=stripHtml(item.title);
+        if (!seenTitles.has(title)) { seenTitles.add(title); allItems.push(item); }
+      });
+      // 사이트 상태 누적
+      if (data.siteStatuses) data.siteStatuses.forEach(s => {
+        if (!window._siteStatuses) window._siteStatuses = {};
+        if (!s.ok) window._siteStatuses[s.name] = s;
+      });
+    }
+    articles=allItems
+      .filter(item=>isInRange(item.pubDate,start,end))
+      .sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate))
+      .map((item,i)=>({
+        id:i,
+        title:stripHtml(item.title),
+        link:item.originallink||item.link,
+        date:formatDate(item.pubDate),
+        source:item._source||'naver',
+        press:item._press||'',
+        importance: null
+      }));
+    renderList();
+  } catch(e) {
+    showError(e.message||'검색 중 오류가 발생했습니다.');
+    document.getElementById('articleList').innerHTML=`<div class="no-results">결과를 불러오지 못했습니다.</div>`;
+  }
+}
+
+function renderList() {
+  const list=document.getElementById('articleList');
+  const header=document.getElementById('listHeader');
+  if (!articles.length) { list.innerHTML=`<div class="no-results">해당 기간에 기사가 없습니다.</div>`; header.classList.remove('visible'); return; }
+  header.classList.add('visible');
+  document.getElementById('articleCount').textContent=articles.length;
+  updateCountUI();
+  // 사이트 상태 알림 (크롤링 실패 등)
+  const statuses = window._siteStatuses || {};
+  const failedSites = Object.values(statuses).filter(s => !s.ok);
+  const statusHtml = failedSites.length ? `
+    <div style="background:#fff8e1;border-top:1px solid #ffe082;padding:10px 16px;">
+      ${failedSites.map(s => `
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;">
+          <span>⚠️</span>
+          <span style="color:var(--text-sub);font-weight:600;">${s.name}</span>
+          <span style="color:var(--text-muted);">· ${s.type==='crawl'?'크롤링':'RSS'} 실패 — 확인 필요</span>
+        </div>`).join('')}
+    </div>` : '';
+
+  list.innerHTML=`<div style="background:white;">`+articles.map(a=>`
+    <div class="article-item" id="item-${a.id}" onclick="openArticle(${a.id})">
+      <input type="checkbox" ${selectedIds.has(a.id)?'checked':''} onclick="event.stopPropagation();toggleCheck(${a.id})">
+      <div class="article-info">
+        <div class="article-title">${a.title}</div>
+        <div class="article-meta">
+          <span class="article-source">${a.source === 'naver' ? '네이버' : a.source}</span>
+          ${a.press && a.press !== (a.source === 'naver' ? '네이버' : a.source) ? `<span style="font-size:11px;color:var(--text-sub);">${a.press}</span>` : ''}
+          <span class="article-date">${a.date}</span>
+        </div>
+      </div>
+      <button class="importance-btn ${a.importance==='star'?'active':''}" onclick="event.stopPropagation();setImportance(${a.id},'star')" title="중요">⭐</button>
+      <button class="importance-btn ${a.importance==='check'?'active':''}" onclick="event.stopPropagation();setImportance(${a.id},'check')" title="점검">🔍</button>
+      <button class="article-share-btn" onclick="event.stopPropagation();shareOne(${a.id})">📤</button>
+    </div>`).join('')+`</div>`+statusHtml;
+}
+
+function openArticle(id) { window.open(articles[id].link,'_blank'); }
+
+function setImportance(id, type) {
+  const a = articles[id];
+  a.importance = a.importance === type ? null : type;
+  // 해당 아이템만 버튼 업데이트
+  const item = document.getElementById('item-'+id);
+  if (item) {
+    item.querySelectorAll('.importance-btn').forEach(btn => btn.classList.remove('active'));
+    if (a.importance) {
+      const idx = a.importance === 'star' ? 0 : 1;
+      item.querySelectorAll('.importance-btn')[idx]?.classList.add('active');
+    }
+  }
+}
+
+// 공유 이력 저장
+function saveToHistory(items) {
+  const history = JSON.parse(localStorage.getItem('share_history') || '[]');
+  const now = new Date().toISOString();
+  items.forEach(a => {
+    history.unshift({
+      date: now,
+      importance: a.importance || 'normal',
+      source: a.source,
+      title: a.title,
+      link: a.link
+    });
+  });
+  // 최대 500개 유지
+  if (history.length > 500) history.splice(500);
+  localStorage.setItem('share_history', JSON.stringify(history));
+}
+
+// 이력 화면 렌더링
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem('share_history') || '[]');
+  const el = document.getElementById('historyList');
+  if (!history.length) {
+    el.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted);font-size:13px;">공유한 기사가 없어요.</div>';
+    return;
+  }
+
+  // 날짜별 그룹핑
+  const groups = {};
+  history.forEach(item => {
+    const d = new Date(item.date);
+    const today = new Date();
+    const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
+    let label;
+    if (d.toDateString() === today.toDateString()) label = '오늘';
+    else if (d.toDateString() === yesterday.toDateString()) label = '어제';
+    else label = `${d.getMonth()+1}/${d.getDate()}`;
+    if (!groups[label]) groups[label] = [];
+    groups[label].push(item);
+  });
+
+  const icon = {star:'⭐', check:'🔍', normal:'📰'};
+  let html = '';
+  Object.entries(groups).forEach(([label, items]) => {
+    html += `<div class="history-date-group">${label} · ${items.length}건</div>`;
+    items.forEach((item, i) => {
+      html += `<div class="history-item">
+        <div class="history-icon">${icon[item.importance]||'📰'}</div>
+        <div class="history-info">
+          <div class="history-title">${item.title}</div>
+          <div class="history-meta">${item.source} · ${formatDate(item.date)}</div>
+        </div>
+        <button class="history-del-btn" onclick="deleteHistory('${label}',${i})">✕</button>
+      </div>`;
+    });
+  });
+  el.innerHTML = html;
+}
+
+function deleteHistory(label, idx) {
+  const history = JSON.parse(localStorage.getItem('share_history') || '[]');
+  // 해당 날짜 그룹의 idx번째 항목 찾아서 삭제
+  const today = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
+  let count = 0;
+  for (let i = 0; i < history.length; i++) {
+    const d = new Date(history[i].date);
+    let lbl;
+    if (d.toDateString() === today.toDateString()) lbl = '오늘';
+    else if (d.toDateString() === yesterday.toDateString()) lbl = '어제';
+    else lbl = `${d.getMonth()+1}/${d.getDate()}`;
+    if (lbl === label) {
+      if (count === idx) { history.splice(i, 1); break; }
+      count++;
+    }
+  }
+  localStorage.setItem('share_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function downloadHistoryCSV() {
+  const history = JSON.parse(localStorage.getItem('share_history') || '[]');
+  if (!history.length) { showToast('이력이 없어요.'); return; }
+  const header = '중요도,출처,제목,URL,공유일시';
+  const iconMap = {star:'⭐중요', check:'🔍점검', normal:'📰일반'};
+  const rows = history.map(h =>
+    [iconMap[h.importance]||'📰일반', h.source, '"'+h.title.replace(/"/g,'""')+'"', h.link, formatDate(h.date)].join(',')
+  );
+  const csv = '﻿' + header + '\n' + rows.join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '공유이력_'+new Date().toISOString().split('T')[0]+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ CSV 다운로드 완료!');
+}
+function toggleCheck(id) { if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id); updateCountUI(); }
+function updateCountUI() {
+  const n=selectedIds.size;
+  document.getElementById('selectedCount').textContent=`${n}개 선택`;
+  const btn=document.getElementById('copyBtn');
+  btn.disabled=n===0; btn.textContent=`URL 복사 (${n}개)`;
+}
+function toggleSelectAll() {
+  if (selectedIds.size===articles.length) selectedIds.clear(); else articles.forEach(a=>selectedIds.add(a.id));
+  renderList();
+}
+async function shareOne(id) {
+  const a=articles[id];
+  if (navigator.share) { try { await navigator.share({title:a.title,url:a.link}); } catch(e) {} }
+  else { navigator.clipboard.writeText(`📰 ${a.title}\n${a.link}`).then(()=>showToast('✅ 복사됐어요!')); }
+}
+function selectSort(el) {
+  document.querySelectorAll('#sortGroup .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active'); sortVal=el.dataset.val; localStorage.setItem('naver_sort',sortVal);
+}
+function selectPeriod(el) {
+  document.querySelectorAll('#periodGroup .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active'); periodVal=el.dataset.val; localStorage.setItem('naver_period',periodVal);
+  document.getElementById('dateRange').classList.toggle('open',periodVal==='custom');
+}
+function selectDisplay(el) {
+  document.querySelectorAll('#displayGroup .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  displayVal = el.dataset.val;
+  localStorage.setItem('naver_display', displayVal);
+  document.getElementById('displayCustomRow').style.display = displayVal === 'custom' ? 'flex' : 'none';
+}
+function saveDisplayVal() {
+  const v = document.getElementById('displayCustomVal').value;
+  if (v) localStorage.setItem('naver_display_custom', v);
+}
+function getDisplayCount() {
+  if (displayVal === '0') return 100; // 무제한 = 네이버 API 최대값 100
+  if (displayVal === 'custom') {
+    const v = parseInt(localStorage.getItem('naver_display_custom') || '100');
+    return Math.min(Math.max(v, 1), 1000);
+  }
+  return parseInt(displayVal) || 100;
+}
+function getDateRange() {
+  if (periodVal==='all') return {start:null,end:null};
+  if (periodVal==='custom') {
+    const s=document.getElementById('startDate').value;
+    const e=document.getElementById('endDate').value;
+    localStorage.setItem('naver_start',s); localStorage.setItem('naver_end',e);
+    return {start:s?new Date(s).getTime():null,end:e?new Date(e+'T23:59:59').getTime():null};
+  }
+  const map={'1h':1/24,'1d':1,'3d':3,'1w':7,'1m':30};
+  const now=new Date();
+  return {start:now.getTime()-(map[periodVal]||1)*86400000,end:now.getTime()};
+}
+function isInRange(pubDate,start,end) {
+  const d=new Date(pubDate).getTime();
+  if (start&&d<start) return false;
+  if (end&&d>end) return false;
+  return true;
+}
+function stripHtml(html) {
+  return html.replace(/<[^>]*>/g,'').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#\d+;/g,'');
+}
+function formatDate(pubDate) {
+  try {
+    const d=new Date(pubDate);
+    return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  } catch { return ''; }
+}
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+function showError(msg) {
+  const el=document.getElementById('errorMsg');
+  el.textContent=msg; el.style.display=msg?'block':'none';
+}
+function copyUrls() {
+  if (!selectedIds.size) return;
+  const importanceIcon = {star:'⭐', check:'🔍', normal:'📰'};
+  const selectedArticles = [...selectedIds].map(id => articles[id]);
+  // 신문사별로 묶기
+  const pressGroups = {};
+  selectedArticles.forEach(a => {
+    const pressName = a.press || (a.source === 'naver' ? '네이버' : a.source);
+    if (!pressGroups[pressName]) pressGroups[pressName] = [];
+    pressGroups[pressName].push(a);
+  });
+
+  const urls = Object.entries(pressGroups).map(([press, items]) => {
+    const lines = items.map(a => {
+      const icon = importanceIcon[a.importance] || '📰';
+      return `${icon} ${press}\n${a.title}\n${a.link}`;
+    }).join('\n\n');
+    return lines;
+  }).join('\n\n') + '\n.';
+  // 이력 저장
+  saveToHistory(selectedArticles);
+  const share=()=>{if(navigator.share)navigator.share({text:urls}).catch(()=>{});};
+  navigator.clipboard.writeText(urls)
+    .then(()=>{showToast(`✅ ${selectedIds.size}개 복사 완료!`);share();})
+    .catch(()=>{
+      const ta=document.createElement('textarea');
+      ta.value=urls; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      showToast(`✅ ${selectedIds.size}개 복사 완료!`); share();
+    });
+}
+</script>
+</body>
+</html>
