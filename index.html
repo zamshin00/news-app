@@ -593,7 +593,7 @@ function fillSavedCredentials() {
 
 (function initAuth() {
   fillSavedCredentials();
-  if (getToken()) showApp(); else showLogin();
+  showLogin(); // 저장된 정보가 있어도 항상 로그인 화면부터 시작
 })();
 
 // ─── 관리자(사용자 등록) 화면 ──────────────────────────────────
