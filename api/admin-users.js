@@ -12,16 +12,16 @@ export default async function handler(req, res) {
       const users = [];
       for (const uname of usernames) {
         const info = await redis.get(`user:${uname}`);
-        users.push({ username: uname, createdAt: info?.createdAt || null });
+        users.push({ username: uname, name: info?.name || '', createdAt: info?.createdAt || null });
       }
       users.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
       return res.status(200).json({ users });
     }
 
     if (req.method === 'POST') {
-      const { username, password } = parseBody(req);
-      if (!username || !password) {
-        return res.status(400).json({ error: '아이디와 비밀번호를 입력해주세요.' });
+      const { username, password, name } = parseBody(req);
+      if (!username || !password || !name) {
+        return res.status(400).json({ error: '이름, 아이디, 비밀번호를 모두 입력해주세요.' });
       }
       if (password.length < 4) {
         return res.status(400).json({ error: '비밀번호는 4자 이상이어야 합니다.' });
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
         return res.status(409).json({ error: '이미 존재하는 아이디입니다.' });
       }
       const passwordHash = await bcrypt.hash(password, 10);
-      await redis.set(`user:${username}`, { passwordHash, createdAt: Date.now() });
+      await redis.set(`user:${username}`, { passwordHash, name, createdAt: Date.now() });
       await redis.sadd('users:index', username);
       return res.status(200).json({ ok: true });
     }
