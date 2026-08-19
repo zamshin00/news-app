@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
     // 90일간 로그인 유지
     const token = signToken({ u: username, r: 'user' }, 60 * 60 * 24 * 90);
-    return res.status(200).json({ token, username, role: 'user' });
+    return res.status(200).json({ token, username, role: 'user', name: info.name || '' });
   } catch (e) {
     return res.status(500).json({ error: '로그인 중 오류가 발생했습니다: ' + e.message });
   }
