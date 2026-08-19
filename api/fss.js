@@ -1,4 +1,9 @@
+import { requireAuth } from '../lib/auth.js';
+
 export default async function handler(req, res) {
+  const auth = requireAuth(req, res);
+  if (!auth) return;
+
   const { query, sites, start } = req.query;
   const startTime = start ? parseInt(start, 10) : null;
 
