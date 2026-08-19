@@ -45,9 +45,9 @@ export default async function handler(req, res) {
   // 웹문서 검색 (신문사 홈페이지 찾기용)
   if (type === 'webkr') {
     try {
-      const p = new URLSearchParams({ query, display: display || 10, start: start || 1, format: 'json' });
-      const r = await fetch(`https://naverapihub.apigw.ntruss.com/search/v1/webkr?${p}`, {
-        headers: { 'X-NCP-APIGW-API-KEY-ID': clientId, 'X-NCP-APIGW-API-KEY': clientSecret }
+      const p = new URLSearchParams({ query, display: display || 10, start: start || 1 });
+      const r = await fetch(`https://openapi.naver.com/v1/search/webkr.json?${p}`, {
+        headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
       });
       const data = await r.json();
       return res.status(200).json(data);
@@ -291,11 +291,11 @@ async function searchCrawl({ siteUrl, query, siteName, siteDomain }) {
   }
 }
 
-// ─── 네이버 뉴스 검색 ────────────────────────────────────────
+// ─── 네이버 뉴스 검색 (개발자센터 방식) ────────────────────────
 async function searchNaver({ query, display, start, sort, clientId, clientSecret }) {
-  const p = new URLSearchParams({ query, display, start, sort, format: 'json' });
-  const r = await fetch(`https://naverapihub.apigw.ntruss.com/search/v1/news?${p}`, {
-    headers: { 'X-NCP-APIGW-API-KEY-ID': clientId, 'X-NCP-APIGW-API-KEY': clientSecret }
+  const p = new URLSearchParams({ query, display, start, sort });
+  const r = await fetch(`https://openapi.naver.com/v1/search/news.json?${p}`, {
+    headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
   });
   if (!r.ok) {
     const err = await r.json().catch(() => ({}));
@@ -308,11 +308,11 @@ async function searchNaver({ query, display, start, sort, clientId, clientSecret
   });
 }
 
-// ─── 네이버 웹문서 검색 ──────────────────────────────────────
+// ─── 네이버 웹문서 검색 (개발자센터 방식) ──────────────────────
 async function searchNaverWeb({ query, display, clientId, clientSecret, siteName, siteDomain }) {
-  const p = new URLSearchParams({ query, display, start: 1, format: 'json' });
-  const r = await fetch(`https://naverapihub.apigw.ntruss.com/search/v1/webkr?${p}`, {
-    headers: { 'X-NCP-APIGW-API-KEY-ID': clientId, 'X-NCP-APIGW-API-KEY': clientSecret }
+  const p = new URLSearchParams({ query, display, start: 1 });
+  const r = await fetch(`https://openapi.naver.com/v1/search/webkr.json?${p}`, {
+    headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
   });
   if (!r.ok) return [];
   const data = await r.json();
