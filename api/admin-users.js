@@ -3,6 +3,7 @@ import { redis } from '../lib/redis.js';
 import { requireAuth, parseBody } from '../lib/auth.js';
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   const admin = requireAuth(req, res, 'admin');
   if (!admin) return; // requireAuth가 이미 401/403 응답을 보냄
 
