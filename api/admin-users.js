@@ -65,6 +65,10 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ error: '지원하지 않는 메서드입니다.' });
   } catch (e) {
-    return res.status(500).json({ error: '처리 중 오류가 발생했습니다: ' + e.message });
+    console.error('admin-users 오류:', e, e?.cause);
+    return res.status(500).json({
+      error: '처리 중 오류가 발생했습니다: ' + e.message,
+      cause: e?.cause ? String(e.cause) : undefined,
+    });
   }
 }
