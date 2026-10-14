@@ -32,10 +32,17 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
     }
 
+    // 최근 접속일자 기록
+    await redis.set(`user:${username}`, { ...info, lastLoginAt: Date.now() });
+
     // 90일간 로그인 유지
     const token = signToken({ u: username, r: 'user' }, 60 * 60 * 24 * 90);
     return res.status(200).json({ token, username, role: 'user', name: info.name || '' });
   } catch (e) {
-    return res.status(500).json({ error: '로그인 중 오류가 발생했습니다: ' + e.message });
+    console.error('user-login 오류:', e, e?.cause);
+    return res.status(500).json({
+      error: '로그인 중 오류가 발생했습니다: ' + e.message,
+      cause: e?.cause ? String(e.cause) : undefined,
+    });
   }
 }
