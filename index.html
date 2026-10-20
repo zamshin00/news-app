@@ -134,7 +134,10 @@ input[type="date"] { font-size: 12px; }
 .site-info { flex: 1; min-width: 0; }
 .site-name { font-size: 14px; color: var(--text); }
 .site-url { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
-.site-link { display: block; font-size: 11px; color: #1a6fd6; text-decoration: underline; word-break: break-all; margin-top: 2px; line-height: 1.4; }
+.site-title { line-height: 1.45; }
+.site-title .site-name { margin-right: 8px; }
+.site-link { font-size: 11px; color: #1a6fd6; text-decoration: underline; word-break: break-all; }
+.site-link-text { font-size: 11px; color: var(--text-muted); word-break: break-all; }
 .site-del-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 18px; }
 .company-order-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
 .company-order-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text-sub); cursor: pointer; padding: 1px 6px; font-size: 10px; border-radius: 4px; line-height: 1.4; }
@@ -1114,8 +1117,9 @@ function siteDisplayUrl(s) {
 
 function siteLinkHtml(url) {
   const href = safeHttpUrl(url);
-  if (!href) return `<div class="site-url">${url ? escapeAttr(url) : '주소 없음'}</div>`;
-  return `<a class="site-link" href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`;
+  // 링크로 만들 수 없는 주소(없음/잘못된 형식)는 숨기지 않고 입력된 글자 그대로 표시
+  if (!href) return `<span class="site-link-text">${url ? escapeHtml(url) : '주소 없음'}</span>`;
+  return `<a class="site-link" href="${escapeAttr(href)}" title="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`;
 }
 
 function renderSites() {
@@ -1123,9 +1127,8 @@ function renderSites() {
     <div class="site-item">
       <input type="checkbox" class="site-check" ${s.enabled?'checked':''} onchange="toggleSite(${i})">
       <div class="site-info">
-        <div class="site-name">${s.name}</div>
+        <div class="site-title"><span class="site-name">${escapeHtml(s.name)}</span>${siteLinkHtml(siteDisplayUrl(s))}</div>
         <div class="site-url">${s.fixed ? 'API 검색' : s.rssUrl ? '📡 RSS 검색' : s.crawl ? '🔍 크롤링 검색 (개편시 재등록 필요)' : '🔍 웹검색'}</div>
-        ${siteLinkHtml(siteDisplayUrl(s))}
       </div>
       ${s.fixed?'':`<button class="site-del-btn" onclick="deleteSite(${i})">🗑</button>`}
     </div>`).join('');
@@ -1284,9 +1287,8 @@ function renderFssSites() {
     <div class="site-item">
       <input type="checkbox" class="site-check" ${s.enabled?'checked':''} onchange="toggleFssSite(${i})">
       <div class="site-info">
-        <div class="site-name">${s.name}</div>
+        <div class="site-title"><span class="site-name">${escapeHtml(s.name)}</span>${siteLinkHtml(siteDisplayUrl(s))}</div>
         <div class="site-url">${s.rssUrl ? '📡 RSS' : '🔍 크롤링(자동감지)'}</div>
-        ${siteLinkHtml(siteDisplayUrl(s))}
       </div>
       <button class="site-del-btn" onclick="deleteFssSite(${i})">🗑</button>
     </div>`).join('');
