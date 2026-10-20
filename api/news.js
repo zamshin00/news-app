@@ -41,12 +41,15 @@ export default async function handler(req, res) {
     }
   }
 
-  if (!query || !clientId || !clientSecret) {
-    return res.status(400).json({ error: '필수 파라미터가 없습니다.' });
+  if (!query) {
+    return res.status(400).json({ error: '검색어가 없습니다.' });
   }
 
   // 웹문서 검색 (신문사 홈페이지 찾기용)
   if (type === 'webkr') {
+    if (!clientId || !clientSecret) {
+      return res.status(500).json({ error: '네이버 API 키가 서버에 설정되지 않았습니다.' });
+    }
     try {
       const p = new URLSearchParams({ query, display: display || 10, start: start || 1 });
       const r = await fetch(`https://openapi.naver.com/v1/search/webkr.json?${p}`, {
@@ -60,32 +63,45 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1) 네이버 뉴스 API 검색
-    const naverItems = naverEnabled === '0' ? [] : await searchNaver({ query, display: display || 100, start: start || 1, sort: sort || 'date', clientId, clientSecret });
+    const siteStatuses = []; // 사이트별 상태 추적 (성공 여부, 오류 사유, 검색된 건수)
+
+    // 1) 네이버 뉴스 API 검색 — 실패해도 다른 사이트 검색은 계속 진행
+    let naverItems = [];
+    if (naverEnabled !== '0') {
+      try {
+        if (!clientId || !clientSecret) throw new Error('네이버 API 키가 서버에 설정되지 않았습니다');
+        naverItems = await searchNaver({ query, display: display || 100, start: start || 1, sort: sort || 'date', clientId, clientSecret });
+        siteStatuses.push({ name: '네이버 뉴스', source: 'naver', type: 'api', ok: true, count: naverItems.length });
+      } catch (e) {
+        siteStatuses.push({ name: '네이버 뉴스', source: 'naver', type: 'api', ok: false, error: e.message, count: 0 });
+      }
+    }
 
     // 2) 개별 사이트 검색
-    const siteStatuses = []; // 사이트별 상태 추적
     let siteItems = [];
 
     if (sites) {
       const siteList = JSON.parse(sites);
       const siteSearches = siteList.map(async site => {
-        if (site.rssUrl) {
-          // RSS 검색
-          const result = await searchRss({ rssUrl: site.rssUrl, query, siteName: site.name, siteDomain: site.domain });
-          siteStatuses.push({ name: site.name, type: 'rss', ok: true });
-          return result;
-        } else if (site.crawl) {
-          // 크롤링 검색 (사용자가 선택한 경우)
-          const result = await searchCrawl({ siteUrl: site.url, query, siteName: site.name, siteDomain: site.domain });
-          siteStatuses.push({ name: site.name, type: 'crawl', ok: result.ok, error: result.error });
-          return result.items;
-        } else {
-          // 웹검색 (네이버 site: 쿼리)
-          const result = await searchNaverWeb({ query: `${query} site:${site.domain}`, display: 20, clientId, clientSecret, siteName: site.name, siteDomain: site.domain });
-          siteStatuses.push({ name: site.name, type: 'web', ok: true });
-          return result;
+        const siteType = site.rssUrl ? 'rss' : site.crawl ? 'crawl' : 'web';
+        let result;
+        try {
+          if (site.rssUrl) {
+            // RSS 검색
+            result = await searchRss({ rssUrl: site.rssUrl, query, siteName: site.name, siteDomain: site.domain });
+          } else if (site.crawl) {
+            // 크롤링 검색 (사용자가 선택한 경우)
+            result = await searchCrawl({ siteUrl: site.url, query, siteName: site.name, siteDomain: site.domain });
+          } else {
+            // 웹검색 (네이버 site: 쿼리)
+            if (!clientId || !clientSecret) throw new Error('네이버 API 키가 서버에 설정되지 않았습니다');
+            result = await searchNaverWeb({ query: `${query} site:${site.domain}`, display: 20, clientId, clientSecret, siteName: site.name, siteDomain: site.domain });
+          }
+        } catch (e) {
+          result = { ok: false, error: e.message, items: [] };
         }
+        siteStatuses.push({ name: site.name, source: site.name, type: siteType, ok: result.ok, error: result.error, count: result.items.length });
+        return result.items;
       });
       const results = await Promise.allSettled(siteSearches);
       results.forEach(r => {
@@ -225,12 +241,15 @@ async function detectRss(siteUrl) {
   } catch { return null; }
 }
 
-// ─── RSS 검색 ────────────────────────────────────────────────
+// ─── RSS 검색 (접속/형식 오류와 "검색 결과 0건"을 구분해서 반환) ───────────
 async function searchRss({ rssUrl, query, siteName, siteDomain }) {
   try {
     const r = await fetch(rssUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!r.ok) return [];
+    if (!r.ok) return { ok: false, error: `HTTP ${r.status}`, items: [] };
     const xml = await r.text();
+    if (!xml.includes('<item') && !xml.includes('<entry')) {
+      return { ok: false, error: 'RSS 항목을 읽을 수 없음 (주소 변경 의심)', items: [] };
+    }
     const items = [];
     const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
     let m;
@@ -248,8 +267,10 @@ async function searchRss({ rssUrl, query, siteName, siteDomain }) {
       items.push({ title, link, originallink: link, description: desc,
         pubDate: pubDate || new Date().toUTCString(), _source: siteName, _press: siteName, _siteDomain: siteDomain });
     }
-    return items;
-  } catch { return []; }
+    return { ok: true, items };
+  } catch (e) {
+    return { ok: false, error: e.message, items: [] };
+  }
 }
 
 // ─── 크롤링 검색 ─────────────────────────────────────────────
@@ -317,13 +338,17 @@ async function searchNaverWeb({ query, display, clientId, clientSecret, siteName
   const r = await fetch(`https://openapi.naver.com/v1/search/webkr.json?${p}`, {
     headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
   });
-  if (!r.ok) return [];
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    return { ok: false, error: err.errorMessage || err.message || `네이버 웹검색 오류 ${r.status}`, items: [] };
+  }
   const data = await r.json();
-  return (data.items || [])
+  const items = (data.items || [])
     .filter(item => (item.link || '').includes(siteDomain))
     .map(item => ({ title: item.title || '', link: item.link || '', originallink: item.link || '',
       description: item.description || '', pubDate: item.pubDate || new Date().toUTCString(),
       _source: siteName, _press: siteName, _siteDomain: siteDomain }));
+  return { ok: true, items };
 }
 
 function stripXml(str) {
