@@ -116,8 +116,10 @@ async function searchFssCrawl({ siteUrl, query, siteName, startTime }) {
   const MAX_PAGES = startTime ? 10 : 5; // 기간 지정 시 10페이지, "전체"는 5페이지로 제한 (실행시간 안전장치)
   const items = [];
   const seen = new Set();
+  const keywords = (query || '').split(/\s+/).filter(Boolean).map(k => k.toLowerCase());
   let prevFirstLink = null;
   let truncated = false;
+  let sawRows = false; // 게시글 행을 한 번이라도 읽었는지 (읽었다면 구조는 정상)
 
   for (let page = 1; page <= MAX_PAGES; page++) {
     const pageUrl = page === 1 ? siteUrl : appendPageParam(siteUrl, page);
@@ -134,30 +136,35 @@ async function searchFssCrawl({ siteUrl, query, siteName, startTime }) {
       break;
     }
 
-    const pageItems = parseFssRows(html, siteUrl, query);
+    // 키워드와 무관하게 이 페이지의 모든 게시글 행을 읽음
+    const rows = parseFssRows(html, siteUrl);
 
-    if (pageItems.length === 0) break; // 더 이상 게시글 없음 → 마지막 페이지
+    if (rows.length === 0) break; // 더 이상 게시글 없음 → 마지막 페이지
+    sawRows = true;
 
     // 페이지네이션 파라미터가 실제로 안 먹혀서 같은 페이지가 반복되는 경우 감지
-    if (prevFirstLink && pageItems[0].link === prevFirstLink) break;
-    prevFirstLink = pageItems[0].link;
+    if (prevFirstLink && rows[0].link === prevFirstLink) break;
+    prevFirstLink = rows[0].link;
 
     let hitBoundary = false;
-    for (const it of pageItems) {
-      if (seen.has(it.link)) continue;
-      seen.add(it.link);
-      it._source = siteName;
-      items.push(it);
-      if (startTime && new Date(it.pubDate).getTime() < startTime) {
-        hitBoundary = true; // 이 항목보다 오래된 건 필요 없음 (최신순 정렬 전제)
+    for (const row of rows) {
+      if (seen.has(row.link)) continue;
+      seen.add(row.link);
+      // 기간 경계 판단은 키워드와 무관하게 모든 행 기준 (최신순 정렬 전제)
+      if (startTime && row.hasDate && new Date(row.pubDate).getTime() < startTime) {
+        hitBoundary = true;
       }
+      // 키워드는 제목뿐 아니라 행 전체 텍스트(기관명, 부서 등)에서 찾음
+      if (keywords.length && !keywords.every(kw => row.searchText.includes(kw))) continue;
+      items.push({ title: row.title, link: row.link, pubDate: row.pubDate, _source: siteName });
     }
 
     if (hitBoundary) break; // 요청한 기간보다 오래된 글에 도달 → 순회 중단
     if (page === MAX_PAGES) truncated = true; // 페이지 한도 도달 (더 있을 수 있음)
   }
 
-  if (seen.size === 0) return { ok: false, error: '게시글 목록을 찾을 수 없음 (사이트 구조 변경 의심)', items: [] };
+  // 게시글 행 자체를 못 읽은 경우만 "구조 변경 의심"으로 실패 처리 (키워드 0건은 정상 결과)
+  if (!sawRows) return { ok: false, error: '게시글 목록을 찾을 수 없음 (사이트 구조 변경 의심)', items: [] };
   return { ok: true, items, truncated };
 }
 
@@ -166,33 +173,67 @@ function appendPageParam(url, page) {
   return `${url}${sep}pageIndex=${page}`;
 }
 
-function parseFssRows(html, siteUrl, query) {
-  const items = [];
+function cleanText(html) {
+  return (html || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// 2026.10.19 / 2026-10-19 / 2026/10/19 / 20261019 형태를 모두 인식 (셀 텍스트에서만 찾음)
+function extractDate(cells) {
+  for (const c of cells) {
+    const m = c.match(/^(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/) || c.match(/^(\d{4})(\d{2})(\d{2})$/);
+    if (!m) continue;
+    const y = +m[1], mo = +m[2], d = +m[3];
+    if (y >= 2000 && y <= 2100 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      const pad = n => String(n).padStart(2, '0');
+      return new Date(`${y}-${pad(mo)}-${pad(d)}`).toUTCString();
+    }
+  }
+  return null;
+}
+
+const GENERIC_LINK_TEXT = /^\[?\s*(내용\s*보기|상세\s*보기|자세히\s*보기|보기|view)\s*\]?$/i;
+const NUMBER_OR_DATE = /^[\d.,\-\/\s]+$/;
+
+// 게시판 목록의 모든 게시글 행을 읽어 돌려줌 (키워드 필터링은 하지 않음)
+function parseFssRows(html, siteUrl) {
+  const rows = [];
   const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
   let m;
   while ((m = rowRegex.exec(html)) !== null) {
-    const row = m[1];
-    const linkMatch = row.match(/<a[^>]+href="([^"]*view\.do[^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
+    const rowHtml = m[1];
+    const linkMatch = rowHtml.match(/<a[^>]+href="([^"]*view\.do[^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
     if (!linkMatch) continue;
     let href = linkMatch[1].replace(/&amp;/g, '&');
     if (!href.startsWith('http')) {
       try { href = new URL(href, siteUrl).href; } catch { continue; }
     }
 
-    const title = linkMatch[2].replace(/<[^>]+>/g, '').trim();
-    if (!title || title.length < 3) continue;
+    const cells = [...rowHtml.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(c => cleanText(c[1])).filter(Boolean);
+    const linkText = cleanText(linkMatch[2]);
 
-    if (query) {
-      const keywords = query.split(/\s+/).filter(Boolean);
-      if (!keywords.every(kw => title.toLowerCase().includes(kw.toLowerCase()))) continue;
+    // 링크 글자가 "내용보기" 같은 무의미한 문구면, 행의 다른 칸(기관명·부서 등)으로 제목을 구성
+    let title = linkText;
+    if (!title || title.length < 3 || GENERIC_LINK_TEXT.test(title)) {
+      title = cells
+        .filter(c => c !== linkText && !NUMBER_OR_DATE.test(c) && !GENERIC_LINK_TEXT.test(c))
+        .join(' · ');
     }
+    if (!title || title.length < 2) continue;
 
-    const dateMatch = row.match(/(\d{4})[.\-](\d{2})[.\-](\d{2})/);
-    const pubDate = dateMatch ? new Date(`${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`).toUTCString() : new Date().toUTCString();
-
-    items.push({ title, link: href, pubDate, _source: null });
+    const date = extractDate(cells);
+    rows.push({
+      title,
+      link: href,
+      pubDate: date || new Date().toUTCString(),
+      hasDate: !!date,
+      searchText: (title + ' ' + cells.join(' ')).toLowerCase(),
+    });
   }
-  return items;
+  return rows;
 }
 
 function stripXml(str) {
