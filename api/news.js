@@ -1,11 +1,4 @@
-import { requireAuth } from '../lib/auth.js';
-import { redis } from '../lib/redis.js';
-
 export default async function handler(req, res) {
-  // 로그인(사용자 또는 관리자)한 경우에만 API 사용 허용
-  const auth = requireAuth(req, res);
-  if (!auth) return;
-
   const { query, display, start, sort, type, sites, naverEnabled } = req.query;
   // 네이버 API 키는 서버 환경변수(Vercel)에서만 읽습니다.
   const clientId = process.env.NAVER_CLIENT_ID;
@@ -69,18 +62,6 @@ export default async function handler(req, res) {
   try {
     // 1) 네이버 뉴스 API 검색
     const naverItems = naverEnabled === '0' ? [] : await searchNaver({ query, display: display || 100, start: start || 1, sort: sort || 'date', clientId, clientSecret });
-
-    // 네이버 조회 사용량 기록 (사용자별 + 오늘 전체) — 실패해도 검색 자체는 계속 진행
-    if (naverItems.length && auth?.u) {
-      const today = new Date().toISOString().split('T')[0];
-      try {
-        await redis.incrby(`usage:news:total:${today}`, naverItems.length);
-        await redis.incr(`usage:news:requests:${today}`);
-        await redis.incrby(`usage:news:total:all`, naverItems.length);
-        await redis.incrby(`usage:news:user:${auth.u}:${today}`, naverItems.length);
-        await redis.incrby(`usage:news:user:${auth.u}:total`, naverItems.length);
-      } catch (e) { /* 사용량 기록 실패는 무시 */ }
-    }
 
     // 2) 개별 사이트 검색
     const siteStatuses = []; // 사이트별 상태 추적
