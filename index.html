@@ -78,9 +78,35 @@ input[type="date"] { font-size: 12px; }
 .article-source { font-size: 11px; color: var(--green); font-weight: 600; }
 .article-date { font-size: 11px; color: var(--text-muted); }
 .article-share-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px 4px; flex-shrink: 0; opacity: 0.6; }
-.copy-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px; z-index: 100; }
-.btn-copy { width: 100%; padding: 12px; background: #1a1a1a; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; }
+.copy-bar { display: flex; gap: 8px; position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px; z-index: 100; }
+.btn-copy { flex: 1; width: auto; padding: 12px; background: #1a1a1a; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; }
 .btn-copy:disabled { background: #ccc; cursor: not-allowed; }
+.btn-seq { flex: 1; padding: 12px; background: #FEE500; color: #191919; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-seq:disabled { background: #e9e9e9; color: #aaa; cursor: not-allowed; }
+
+/* 순차 공유 화면 */
+#seqSheet { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 700; align-items: flex-end; justify-content: center; }
+.seq-panel { width: 100%; max-width: 560px; background: var(--surface); border-radius: 16px 16px 0 0; padding: 16px; max-height: 90vh; overflow-y: auto; }
+@media (min-width: 600px) { #seqSheet { align-items: center; } .seq-panel { border-radius: 16px; } }
+.seq-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.seq-title { font-size: 15px; font-weight: 700; }
+.seq-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-sub); padding: 0 4px; }
+.seq-summary { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 8px; }
+.seq-list { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; margin-bottom: 12px; }
+.seq-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; background: #f0f0f0; color: #9a9a9a; }
+.seq-item.current { background: #2e2e2e; color: #ffffff; }
+.seq-item.done { background: #f0f0f0; color: #b5b5b5; }
+.seq-num { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: #dcdcdc; color: #8a8a8a; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.seq-item.current .seq-num { background: #FEE500; color: #191919; }
+.seq-item.done .seq-num { background: var(--green); color: #fff; }
+.seq-info { flex: 1; min-width: 0; }
+.seq-press { font-size: 11px; font-weight: 600; color: inherit; opacity: 0.85; }
+.seq-name { font-size: 13px; line-height: 1.4; margin: 1px 0; word-break: break-all; }
+.seq-url { font-size: 11px; color: inherit; opacity: 0.8; word-break: break-all; }
+.seq-mark { flex-shrink: 0; width: 18px; text-align: center; font-size: 14px; }
+.seq-kakao { width: 100%; padding: 13px; background: #FEE500; color: #191919; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 4px; }
+.seq-copy { width: 100%; padding: 9px; background: none; border: none; font-size: 12px; color: var(--text-muted); text-decoration: underline; cursor: pointer; }
+.seq-hint { font-size: 11px; color: var(--text-muted); line-height: 1.5; text-align: center; margin-top: 4px; }
 
 /* 설정 화면 */
 .settings-screen { padding-bottom: 40px; }
@@ -108,6 +134,7 @@ input[type="date"] { font-size: 12px; }
 .site-info { flex: 1; min-width: 0; }
 .site-name { font-size: 14px; color: var(--text); }
 .site-url { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.site-link { display: block; font-size: 11px; color: #1a6fd6; text-decoration: underline; word-break: break-all; margin-top: 2px; line-height: 1.4; }
 .site-del-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 18px; }
 .company-order-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
 .company-order-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text-sub); cursor: pointer; padding: 1px 6px; font-size: 10px; border-radius: 4px; line-height: 1.4; }
@@ -250,7 +277,8 @@ input[type="date"] { font-size: 12px; }
   </div>
 
   <div class="copy-bar">
-    <button class="btn-copy" id="copyBtn" onclick="copyUrls()" disabled>URL 복사 (0개)</button>
+    <button class="btn-copy" id="copyBtn" onclick="copyUrls()" disabled>일괄 공유 (0개)</button>
+    <button class="btn-seq" id="seqBtn" onclick="openSeqShare('news')" disabled>순차 공유 (0개)</button>
   </div>
 </div>
 
@@ -299,7 +327,8 @@ input[type="date"] { font-size: 12px; }
   </div>
 
   <div class="copy-bar">
-    <button class="btn-copy" id="fssCopyBtn" onclick="copyFssUrls()" disabled>URL 복사 (0개)</button>
+    <button class="btn-copy" id="fssCopyBtn" onclick="copyFssUrls()" disabled>일괄 공유 (0개)</button>
+    <button class="btn-seq" id="fssSeqBtn" onclick="openSeqShare('fss')" disabled>순차 공유 (0개)</button>
   </div>
 </div>
 
@@ -370,6 +399,21 @@ input[type="date"] { font-size: 12px; }
   <div class="edit-body">
     <input type="text" class="group-name-input" id="editGroupName" placeholder="그룹 이름 입력...">
     <div id="editKeywordRows"></div>
+  </div>
+</div>
+
+<!-- 순차 공유 화면 -->
+<div id="seqSheet" onclick="if(event.target===this) closeSeqShare()">
+  <div class="seq-panel">
+    <div class="seq-head">
+      <span class="seq-title">순차 공유</span>
+      <button class="seq-close" onclick="closeSeqShare()">✕</button>
+    </div>
+    <div class="seq-summary" id="seqSummary"></div>
+    <div class="seq-list" id="seqList"></div>
+    <button class="seq-kakao" id="seqKakaoBtn" onclick="seqShareCurrent()">카카오톡으로 공유</button>
+    <button class="seq-copy" onclick="seqCopyCurrent()">복사만 하기 (PC에서 카카오톡에 붙여넣기용)</button>
+    <div class="seq-hint">휴대폰: 공유창에서 카카오톡 선택 · PC: 복사 후 카카오톡에 붙여넣기(Ctrl+V)<br>한 건 보낼 때마다 진한 음영이 다음 기사로 넘어가요. 기사를 눌러 먼저 보낼 기사를 바꿀 수도 있어요.</div>
   </div>
 </div>
 
@@ -1046,13 +1090,42 @@ function getSites() {
 }
 function saveSites(s) { localStorage.setItem('naver_sites', JSON.stringify(s)); }
 
+// ─── 설정 화면의 사이트 주소 표시: 모든 사이트에 주소를 달고, 눌러서 새 창으로 이동 ───
+function escapeAttr(str) {
+  return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// http/https 주소만 링크로 허용 (javascript: 같은 주소가 링크로 만들어지는 것을 차단)
+function safeHttpUrl(u) {
+  try {
+    const x = new URL(String(u || '').trim());
+    return /^https?:$/.test(x.protocol) ? x.href : '';
+  } catch (e) { return ''; }
+}
+
+// 목록에 보여줄 주소: 네이버는 뉴스 홈, 그 외는 등록된 주소(없으면 도메인으로 보완)
+function siteDisplayUrl(s) {
+  if (s.fixed || s.url === 'naver') return 'https://news.naver.com';
+  const raw = String(s.url || '').trim();
+  if (safeHttpUrl(raw)) return raw;
+  if (s.domain) return 'https://' + s.domain;
+  return raw;
+}
+
+function siteLinkHtml(url) {
+  const href = safeHttpUrl(url);
+  if (!href) return `<div class="site-url">${url ? escapeAttr(url) : '주소 없음'}</div>`;
+  return `<a class="site-link" href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`;
+}
+
 function renderSites() {
   document.getElementById('siteList').innerHTML = getSites().map((s,i) => `
     <div class="site-item">
       <input type="checkbox" class="site-check" ${s.enabled?'checked':''} onchange="toggleSite(${i})">
       <div class="site-info">
         <div class="site-name">${s.name}</div>
-        <div class="site-url" style="font-size:11px;color:var(--text-muted);">${s.fixed ? 'API 검색' : s.rssUrl ? '📡 RSS 검색' : s.crawl ? '🔍 크롤링 검색 (개편시 재등록 필요)' : '🔍 웹검색'} · ${s.domain||s.url}</div>
+        <div class="site-url">${s.fixed ? 'API 검색' : s.rssUrl ? '📡 RSS 검색' : s.crawl ? '🔍 크롤링 검색 (개편시 재등록 필요)' : '🔍 웹검색'}</div>
+        ${siteLinkHtml(siteDisplayUrl(s))}
       </div>
       ${s.fixed?'':`<button class="site-del-btn" onclick="deleteSite(${i})">🗑</button>`}
     </div>`).join('');
@@ -1212,7 +1285,8 @@ function renderFssSites() {
       <input type="checkbox" class="site-check" ${s.enabled?'checked':''} onchange="toggleFssSite(${i})">
       <div class="site-info">
         <div class="site-name">${s.name}</div>
-        <div class="site-url" style="font-size:11px;color:var(--text-muted);">${s.rssUrl ? '📡 RSS' : '🔍 크롤링(자동감지)'} · ${s.url}</div>
+        <div class="site-url">${s.rssUrl ? '📡 RSS' : '🔍 크롤링(자동감지)'}</div>
+        ${siteLinkHtml(siteDisplayUrl(s))}
       </div>
       <button class="site-del-btn" onclick="deleteFssSite(${i})">🗑</button>
     </div>`).join('');
@@ -1389,7 +1463,9 @@ function updateFssCountUI() {
   const n = fssSelectedIds.size;
   document.getElementById('fssSelectedCount').textContent = `${n}개 선택`;
   const btn = document.getElementById('fssCopyBtn');
-  btn.disabled = n===0; btn.textContent = `URL 복사 (${n}개)`;
+  btn.disabled = n===0; btn.textContent = `일괄 공유 (${n}개)`;
+  const seq = document.getElementById('fssSeqBtn');
+  seq.disabled = n===0; seq.textContent = `순차 공유 (${n}개)`;
 }
 function toggleFssSelectAll() {
   if (fssSelectedIds.size === fssArticles.length) fssSelectedIds.clear();
@@ -1409,14 +1485,143 @@ function copyFssUrls() {
   const text = Object.entries(groups).map(([source, items]) =>
     items.map(a => `🏛 ${source}\n${a.title}\n${a.link}`).join('\n\n')
   ).join('\n\n') + '\n.';
+  // 이력 저장 (뉴스 검색과 동일)
+  saveToHistory(selected.map(a => ({ importance: 'normal', source: a.source, title: a.title, link: a.link })));
+  const share=()=>{if(navigator.share)navigator.share({text}).catch(()=>{});};
   navigator.clipboard.writeText(text)
-    .then(()=>showToast(`✅ ${fssSelectedIds.size}개 복사 완료!`))
+    .then(()=>{showToast(`✅ ${fssSelectedIds.size}개 복사 완료!`);share();})
     .catch(()=>{
       const ta=document.createElement('textarea');
       ta.value=text; document.body.appendChild(ta); ta.select();
       document.execCommand('copy'); document.body.removeChild(ta);
-      showToast(`✅ ${fssSelectedIds.size}개 복사 완료!`);
+      showToast(`✅ ${fssSelectedIds.size}개 복사 완료!`); share();
     });
+}
+
+// ─── 순차 공유: 선택한 기사를 연번 목록으로 보여주고, 카카오톡으로 한 건씩 공유 ───
+let seqState = { items: [], index: 0, done: new Set(), busy: false };
+
+function openSeqShare(kind) {
+  let items;
+  if (kind === 'fss') {
+    items = fssArticles.filter(a => fssSelectedIds.has(a.id)).map(a => ({
+      icon: '🏛', press: a.source, title: a.title, link: a.link,
+      text: `🏛 ${a.source}\n${a.title}\n${a.link}\n.`,
+      article: { importance: 'normal', source: a.source, title: a.title, link: a.link }
+    }));
+  } else {
+    items = articles.filter(a => selectedIds.has(a.id)).map(a => {
+      const icon = ({star:'⭐', check:'🔍', normal:'📰'})[a.importance] || '📰';
+      const press = a.press || (a.source === 'naver' ? '네이버' : a.source);
+      return { icon, press, title: a.title, link: a.link,
+        text: `${icon} ${press}\n${a.title}\n${a.link}\n.`, article: a };
+    });
+  }
+  if (!items.length) { showToast('공유할 기사를 선택해주세요.'); return; }
+  seqState = { items, index: 0, done: new Set(), busy: false };
+  document.getElementById('seqSheet').style.display = 'flex';
+  renderSeq();
+}
+
+function closeSeqShare() {
+  document.getElementById('seqSheet').style.display = 'none';
+}
+
+function renderSeq() {
+  const { items, index, done } = seqState;
+  const total = items.length;
+  const allDone = done.size === total;
+  document.getElementById('seqSummary').textContent = allDone
+    ? `✅ ${total}개 모두 공유 완료`
+    : `공유 ${done.size}/${total}개 완료 · 진한 음영이 지금 보낼 기사예요`;
+  document.getElementById('seqList').innerHTML = items.map((it, i) => {
+    const cls = 'seq-item' + (i === index && !allDone ? ' current' : '') + (done.has(i) ? ' done' : '');
+    const mark = done.has(i) ? '✓' : (i === index ? '▶' : '');
+    return `<div class="${cls}" id="seq-item-${i}" onclick="seqSelect(${i})">
+      <div class="seq-num">${i + 1}</div>
+      <div class="seq-info">
+        <div class="seq-press">${escapeHtml(it.icon)} ${escapeHtml(it.press)}</div>
+        <div class="seq-name">${escapeHtml(it.title)}</div>
+        <div class="seq-url">${escapeHtml(it.link)}</div>
+      </div>
+      <div class="seq-mark">${mark}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('seqKakaoBtn').textContent = done.has(index)
+    ? '이 기사 다시 공유'
+    : `카카오톡으로 공유 (${done.size + 1}/${total})`;
+  const cur = document.getElementById('seq-item-' + index);
+  if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function seqSelect(i) { seqState.index = i; renderSeq(); }
+
+// 공유 완료 처리: 완료 표시 + 공유이력 저장(뉴스) + 아직 안 보낸 다음 기사로 이동
+function markSeqDone(idx) {
+  if (!seqState.done.has(idx)) {
+    seqState.done.add(idx);
+    const it = seqState.items[idx];
+    if (it.article) saveToHistory([it.article]);
+  }
+  const n = seqState.items.length;
+  for (let k = 1; k <= n; k++) {
+    const i = (idx + k) % n;
+    if (!seqState.done.has(i)) { seqState.index = i; break; }
+  }
+  renderSeq();
+}
+
+function legacyCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return !!ok;
+  } catch (e) { return false; }
+}
+function copyToClipboardSafe(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(() => true).catch(() => legacyCopy(text));
+    }
+  } catch (e) {}
+  return Promise.resolve(legacyCopy(text));
+}
+
+async function seqShareCurrent() {
+  const idx = seqState.index;
+  const item = seqState.items[idx];
+  if (!item || seqState.busy) return;
+  seqState.busy = true;
+  // 클릭 직후 바로 복사를 시작해 두고(공유창에 카카오톡이 없는 PC에서 붙여넣기용), 곧바로 공유창을 엶
+  const copyP = copyToClipboardSafe(item.text);
+  try {
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: item.text });
+      } catch (e) {
+        const copied = await copyP;
+        const tail = copied ? ' (내용은 복사되어 있어요)' : '';
+        showToast((e && e.name === 'AbortError' ? '공유를 취소했어요' : '⚠️ 공유에 실패했어요') + tail);
+        return;
+      }
+      showToast('✅ 공유 완료');
+    } else {
+      if (!(await copyP)) { showToast('⚠️ 복사에 실패했어요'); return; }
+      showToast('✅ 복사됨 — 카카오톡에 붙여넣기(Ctrl+V)');
+    }
+    markSeqDone(idx);
+  } finally { seqState.busy = false; }
+}
+
+async function seqCopyCurrent() {
+  const idx = seqState.index;
+  const item = seqState.items[idx];
+  if (!item) return;
+  if (!(await copyToClipboardSafe(item.text))) { showToast('⚠️ 복사에 실패했어요'); return; }
+  showToast('✅ 복사됨 — 카카오톡에 붙여넣기(Ctrl+V)');
+  markSeqDone(idx);
 }
 
 function buildRowQuery(i) {
@@ -1699,7 +1904,9 @@ function updateCountUI() {
   const n=selectedIds.size;
   document.getElementById('selectedCount').textContent=`${n}개 선택`;
   const btn=document.getElementById('copyBtn');
-  btn.disabled=n===0; btn.textContent=`URL 복사 (${n}개)`;
+  btn.disabled=n===0; btn.textContent=`일괄 공유 (${n}개)`;
+  const seq=document.getElementById('seqBtn');
+  seq.disabled=n===0; seq.textContent=`순차 공유 (${n}개)`;
 }
 function toggleSelectAll() {
   if (selectedIds.size===articles.length) selectedIds.clear(); else articles.forEach(a=>selectedIds.add(a.id));
